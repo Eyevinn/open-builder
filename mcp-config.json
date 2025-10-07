@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "permission-prompt": {
+      "command": "node",
+      "args": ["/Users/birme/Code/eyevinn/open-builder/mcp-permission-server.js"],
+      "env": {
+        "WEB_APP_BASE_URL": "http://localhost:3001"
+      }
+    }
+  }
+}
