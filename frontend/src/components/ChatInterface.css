@@ -17,10 +17,81 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .chat-header h2 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.session-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.session-label {
+  font-weight: 500;
+}
+
+.session-id {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.chat-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.session-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.session-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.session-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.session-button.clear {
+  background: rgba(255, 69, 58, 0.2);
+  border-color: rgba(255, 69, 58, 0.5);
+}
+
+.session-button.clear:hover:not(:disabled) {
+  background: rgba(255, 69, 58, 0.3);
+  border-color: rgba(255, 69, 58, 0.7);
 }
 
 .permission-button-header {
@@ -268,8 +339,32 @@
     gap: 12px;
   }
   
+  .chat-header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
   .chat-header h2 {
     font-size: 1.3rem;
+  }
+  
+  .session-info {
+    font-size: 0.8rem;
+  }
+  
+  .session-id {
+    font-size: 0.75rem;
+  }
+  
+  .chat-header-controls {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .session-button {
+    font-size: 0.8rem;
+    padding: 6px 10px;
   }
   
   .permission-button-header {

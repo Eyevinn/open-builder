@@ -9,12 +9,14 @@ export interface ClaudeServiceConfig {
   baseUrl?: string;
 }
 
+
 interface StreamEvent {
   type: 'start' | 'message' | 'complete' | 'error';
   content?: string;
   message?: string;
   error?: string;
   messageId?: number;
+  sessionId?: string;
 }
 
 class ClaudeService {
@@ -23,6 +25,9 @@ class ClaudeService {
   constructor(config: ClaudeServiceConfig = {}) {
     this.baseUrl = config.baseUrl || '/api';
   }
+
+
+
 
   async testConnection(): Promise<boolean> {
     try {
@@ -35,7 +40,7 @@ class ClaudeService {
     }
   }
 
-  async *sendMessage(prompt: string): AsyncGenerator<string, void, unknown> {
+  async *sendMessage(prompt: string, sessionId?: string): AsyncGenerator<{ content: string; sessionId?: string }, void, unknown> {
     try {
       const response = await fetch(`${this.baseUrl}/chat/stream`, {
         method: 'POST',
@@ -44,6 +49,7 @@ class ClaudeService {
         },
         body: JSON.stringify({
           prompt,
+          ...(sessionId && { sessionId }),
         }),
       });
 
@@ -74,11 +80,14 @@ class ClaudeService {
                 const eventData: StreamEvent = JSON.parse(line.slice(6));
                 
                 if (eventData.type === 'message' && eventData.content) {
-                  yield eventData.content;
+                  yield { content: eventData.content };
+                } else if (eventData.type === 'complete') {
+                  if (eventData.sessionId) {
+                    yield { content: '', sessionId: eventData.sessionId };
+                  }
+                  return;
                 } else if (eventData.type === 'error') {
                   throw new Error(eventData.error || 'Unknown streaming error');
-                } else if (eventData.type === 'complete') {
-                  return;
                 }
               } catch (parseError) {
                 console.warn('Failed to parse SSE data:', line, parseError);

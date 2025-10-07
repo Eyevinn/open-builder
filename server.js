@@ -12,6 +12,7 @@ const permissionClients = new Set(); // Store connected SSE clients
 const EventEmitter = require('events');
 const permissionEmitter = new EventEmitter();
 
+
 // MCP Server management
 let mcpServerProcess = null;
 
@@ -123,19 +124,9 @@ initializeWorkspace().then(dir => {
 
 // Middleware
 app.use(cors());
+
 app.use(express.json({
-  limit: '50mb',
-  verify: (req, res, buf, encoding) => {
-    try {
-      JSON.parse(buf);
-    } catch (err) {
-      console.error('JSON Parse Error:', err.message);
-      console.error('Raw body:', buf.toString());
-      err.statusCode = 400;
-      err.type = 'entity.parse.failed';
-      throw err;
-    }
-  }
+  limit: '50mb'
 }));
 
 // Serve static files from the React app build directory
@@ -151,6 +142,7 @@ const MCP_SERVERS = {
     }
   }
 };
+
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -193,11 +185,12 @@ app.get('/health', async (req, res) => {
 // Chat endpoint for streaming responses
 app.post('/api/chat/stream', async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, sessionId } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
+
 
     // Set headers for Server-Sent Events
     res.writeHead(200, {
@@ -228,6 +221,7 @@ app.post('/api/chat/stream', async (req, res) => {
         }
         
         let messageCount = 0;
+        let currentSessionId = null;
         
         const options = {
           cwd: workspaceDir || process.cwd(),
@@ -235,6 +229,15 @@ app.post('/api/chat/stream', async (req, res) => {
           permissionPromptToolName: 'mcp__permission-prompt__permission_prompt',
           permissionMode: 'default',
           additionalDirectories: [workspaceDir]
+        };
+
+        // Add session resume option if sessionId is provided
+        if (sessionId) {
+          options.resume = sessionId;
+          currentSessionId = sessionId;
+          if (isDebugMode) {
+            console.log('🔄 Resuming Claude SDK session with ID:', sessionId);
+          }
         }
         if (isDebugMode) {
           console.log('🔧 Query options:', {
@@ -261,6 +264,15 @@ app.post('/api/chat/stream', async (req, res) => {
               ? message.substring(0, 100) + '...'
               : JSON.stringify(message).substring(0, 200) + '...'
           });
+        }
+        
+        
+        // Check for Claude SDK session init messages
+        if (message && typeof message === 'object' && message.type === 'system' && message.subtype === 'init' && message.session_id) {
+          currentSessionId = message.session_id;
+          if (isDebugMode) {
+            console.log('🆔 Claude SDK session initialized with ID:', currentSessionId);
+          }
         }
         
         // Handle different message formats from the Claude Agent SDK
@@ -328,8 +340,21 @@ app.post('/api/chat/stream', async (req, res) => {
 
       console.log(`✅ Claude SDK query completed. Total messages processed: ${messageCount}`);
       
-      // Send completion message
-      res.write(`data: {"type": "complete", "message": "Stream complete"}\n\n`);
+      
+      // Send completion message with session_id
+      const completionData = {
+        type: 'complete',
+        message: 'Stream complete'
+      };
+      
+      if (currentSessionId) {
+        completionData.sessionId = currentSessionId;
+        if (isDebugMode) {
+          console.log('📤 Sending session_id to frontend:', currentSessionId);
+        }
+      }
+      
+      res.write(`data: ${JSON.stringify(completionData)}\n\n`);
       res.end();
       
       } finally {
@@ -373,13 +398,15 @@ app.post('/api/chat/stream', async (req, res) => {
 // Regular chat endpoint (non-streaming)
 app.post('/api/chat', async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, sessionId } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
+
     let fullResponse = '';
+    let currentSessionId = null;
     // Set environment for Claude Agent SDK workspace
     const originalEnv = process.env.CLAUDE_WORKSPACE_DIR;
     const originalCwd = process.cwd();
@@ -400,6 +427,13 @@ app.post('/api/chat', async (req, res) => {
         mcpServers: MCP_SERVERS,
         additionalDirectories: [workspaceDir]
       };
+
+      // Add session resume option if sessionId is provided
+      if (sessionId) {
+        options.resume = sessionId;
+        currentSessionId = sessionId;
+        console.log('🔄 Resuming Claude SDK session with ID:', sessionId);
+      }
       console.log('🔧 Query options:', {
         prompt: prompt.substring(0, 50) + '...',
         options
@@ -408,33 +442,40 @@ app.post('/api/chat', async (req, res) => {
         prompt,
         options
       })) {
-      // Handle different message formats from the Claude Agent SDK
-      if (typeof message === 'string') {
-        fullResponse += message;
-      } else if (message && typeof message === 'object') {
-        // Handle structured Claude Agent SDK responses
-        if (message.type === 'assistant' && message.message) {
-          // Extract content from assistant messages
-          if (message.message.content && Array.isArray(message.message.content)) {
-            const textContent = message.message.content
-              .filter(item => item.type === 'text')
-              .map(item => item.text)
-              .join('\n');
-            if (textContent && textContent.trim().length > 0) {
-              fullResponse += textContent;
-            }
-          }
-        } else if (message.type === 'result' && message.result) {
-          // Skip final result messages as they're redundant with assistant messages
-          // This prevents duplication
-        } else if (message.content) {
-          fullResponse += message.content;
-        } else if (message.text) {
-          fullResponse += message.text;
+        
+        // Check for Claude SDK session init messages
+        if (message && typeof message === 'object' && message.type === 'system' && message.subtype === 'init' && message.session_id) {
+          currentSessionId = message.session_id;
+          console.log('🆔 Claude SDK session initialized with ID:', currentSessionId);
         }
-        // Skip system and intermediate messages, don't accumulate raw JSON
+        
+        // Handle different message formats from the Claude Agent SDK
+        if (typeof message === 'string') {
+          fullResponse += message;
+        } else if (message && typeof message === 'object') {
+          // Handle structured Claude Agent SDK responses
+          if (message.type === 'assistant' && message.message) {
+            // Extract content from assistant messages
+            if (message.message.content && Array.isArray(message.message.content)) {
+              const textContent = message.message.content
+                .filter(item => item.type === 'text')
+                .map(item => item.text)
+                .join('\n');
+              if (textContent && textContent.trim().length > 0) {
+                fullResponse += textContent;
+              }
+            }
+          } else if (message.type === 'result' && message.result) {
+            // Skip final result messages as they're redundant with assistant messages
+            // This prevents duplication
+          } else if (message.content) {
+            fullResponse += message.content;
+          } else if (message.text) {
+            fullResponse += message.text;
+          }
+          // Skip system and intermediate messages, don't accumulate raw JSON
+        }
       }
-    }
     
     } finally {
       // Restore original environment and working directory
@@ -444,10 +485,17 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    res.json({ 
+    const responseData = { 
       response: fullResponse,
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    if (currentSessionId) {
+      responseData.sessionId = currentSessionId;
+      console.log('📤 Sending session_id to frontend:', currentSessionId);
+    }
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Error in chat endpoint:', error);
     

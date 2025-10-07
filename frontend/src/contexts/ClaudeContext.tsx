@@ -8,6 +8,7 @@ interface ClaudeContextType {
   sendMessage: (content: string) => Promise<void>;
   clearMessages: () => void;
   connectToService: () => Promise<void>;
+  sessionId: string | null;
 }
 
 const ClaudeContext = createContext<ClaudeContextType | undefined>(undefined);
@@ -28,6 +29,7 @@ export const ClaudeProvider: React.FC<ClaudeProviderProps> = ({ children }) => {
   const [messages, setMessages] = useState<ClaudeMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [claudeService, setClaudeService] = useState<ClaudeService | null>(null);
 
   const connectToService = useCallback(async () => {
@@ -42,6 +44,7 @@ export const ClaudeProvider: React.FC<ClaudeProviderProps> = ({ children }) => {
       
       setClaudeService(service);
       setIsConnected(true);
+      setMessages([]);
     } catch (error) {
       console.error('Failed to connect to Claude service:', error);
       setIsConnected(false);
@@ -67,31 +70,41 @@ export const ClaudeProvider: React.FC<ClaudeProviderProps> = ({ children }) => {
     try {
       let assistantResponse = '';
       
-      for await (const chunk of claudeService.sendMessage(content)) {
-        // Add spacing between chunks if assistantResponse already has content
-        if (assistantResponse.trim().length > 0 && chunk.trim().length > 0) {
-          assistantResponse += '\n\n' + chunk;
-        } else {
-          assistantResponse += chunk;
+      for await (const chunk of claudeService.sendMessage(content, sessionId || undefined)) {
+        // Handle session ID updates
+        if (chunk.sessionId) {
+          setSessionId(chunk.sessionId);
         }
         
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
-          
-          if (lastMessage && lastMessage.role === 'assistant') {
-            lastMessage.content = assistantResponse;
+        // Process content chunks
+        if (chunk.content) {
+          // Add spacing between chunks if assistantResponse already has content
+          if (assistantResponse.trim().length > 0 && chunk.content.trim().length > 0) {
+            assistantResponse += '\n\n' + chunk.content;
           } else {
-            newMessages.push({
-              id: (Date.now() + 1).toString(),
-              content: assistantResponse,
-              role: 'assistant',
-              timestamp: new Date(),
-            });
+            assistantResponse += chunk.content;
           }
           
-          return newMessages;
-        });
+          // Capture the current response content for the callback
+          const currentResponse = assistantResponse;
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const lastMessage = newMessages[newMessages.length - 1];
+            
+            if (lastMessage && lastMessage.role === 'assistant') {
+              lastMessage.content = currentResponse;
+            } else {
+              newMessages.push({
+                id: (Date.now() + 1).toString(),
+                content: currentResponse,
+                role: 'assistant',
+                timestamp: new Date(),
+              });
+            }
+            
+            return newMessages;
+          });
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -107,11 +120,13 @@ export const ClaudeProvider: React.FC<ClaudeProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [claudeService]);
+  }, [claudeService, sessionId]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setSessionId(null);
   }, []);
+
 
   const value: ClaudeContextType = {
     messages,
@@ -120,6 +135,7 @@ export const ClaudeProvider: React.FC<ClaudeProviderProps> = ({ children }) => {
     sendMessage,
     clearMessages,
     connectToService,
+    sessionId,
   };
 
   return (

@@ -5,7 +5,12 @@ import PermissionModal from './PermissionModal';
 import './ChatInterface.css';
 
 const ChatInterface: React.FC = () => {
-  const { messages, isLoading, sendMessage } = useClaudeContext();
+  const { 
+    messages, 
+    isLoading, 
+    sendMessage, 
+    clearMessages
+  } = useClaudeContext();
   const [inputValue, setInputValue] = useState('');
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
   const [pendingPermissionCount, setPendingPermissionCount] = useState(0);
@@ -111,7 +116,7 @@ const ChatInterface: React.FC = () => {
         permissionEventSource.close();
       }
     };
-  }, [isPermissionModalOpen]);
+  }, [isPermissionModalOpen, permissionEventSource]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,25 +133,45 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  const handleClearMessages = async () => {
+    try {
+      clearMessages();
+    } catch (error) {
+      console.error('Failed to clear messages:', error);
+    }
+  };
+
   return (
     <div className="chat-interface">
       <div className="chat-header">
-        <h2>Open Builder</h2>
-        <button 
-          className={`permission-button-header ${pendingPermissionCount > 0 ? 'has-pending' : ''}`}
-          onClick={() => {
-            setIsPermissionModalOpen(true);
-            setModalAutoOpened(false);
-          }}
-          title={`View Permission Requests${pendingPermissionCount > 0 ? ` (${pendingPermissionCount} pending)` : ''}`}
-        >
-          🔐 Permissions
-          {pendingPermissionCount > 0 && (
-            <span className="permission-badge">
-              {pendingPermissionCount}
-            </span>
-          )}
-        </button>
+        <div className="chat-header-left">
+          <h2>Open Builder</h2>
+        </div>
+        <div className="chat-header-controls">
+          <button 
+            className="session-button clear"
+            onClick={handleClearMessages}
+            disabled={isLoading}
+            title="Clear Messages"
+          >
+            🗑️ Clear
+          </button>
+          <button 
+            className={`permission-button-header ${pendingPermissionCount > 0 ? 'has-pending' : ''}`}
+            onClick={() => {
+              setIsPermissionModalOpen(true);
+              setModalAutoOpened(false);
+            }}
+            title={`View Permission Requests${pendingPermissionCount > 0 ? ` (${pendingPermissionCount} pending)` : ''}`}
+          >
+            🔐 Permissions
+            {pendingPermissionCount > 0 && (
+              <span className="permission-badge">
+                {pendingPermissionCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
       
       <div className="messages-container">
