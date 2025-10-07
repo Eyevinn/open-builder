@@ -12,51 +12,6 @@ const permissionClients = new Set(); // Store connected SSE clients
 const EventEmitter = require('events');
 const permissionEmitter = new EventEmitter();
 
-
-// MCP Server management
-let mcpServerProcess = null;
-
-function startMCPServer() {
-  const mcpServerPath = path.join(__dirname, 'mcp-permission-server.js');
-  console.log('🔐 Starting MCP Permission Server:', mcpServerPath);
-  
-  mcpServerProcess = spawn('node', [mcpServerPath], {
-    stdio: ['pipe', 'pipe', 'pipe'],
-    env: {
-      ...process.env,
-      WEB_APP_BASE_URL: `http://localhost:${process.env.PORT || 3001}`
-    }
-  });
-  
-  mcpServerProcess.stdout.on('data', (data) => {
-    console.log('🔐 MCP Server stdout:', data.toString().trim());
-  });
-  
-  mcpServerProcess.stderr.on('data', (data) => {
-    console.log('🔐 MCP Server stderr:', data.toString().trim());
-  });
-  
-  mcpServerProcess.on('close', (code) => {
-    console.log('🔐 MCP Server process exited with code:', code);
-    mcpServerProcess = null;
-  });
-  
-  mcpServerProcess.on('error', (error) => {
-    console.error('🔐 MCP Server error:', error);
-    mcpServerProcess = null;
-  });
-  
-  console.log('🔐 MCP Server started with PID:', mcpServerProcess.pid);
-}
-
-function stopMCPServer() {
-  if (mcpServerProcess) {
-    console.log('🔐 Stopping MCP Server...');
-    mcpServerProcess.kill();
-    mcpServerProcess = null;
-  }
-}
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 const WORKSPACE_DIR = process.env.CLAUDE_WORKSPACE_DIR || './usercontent';
@@ -140,7 +95,16 @@ const MCP_SERVERS = {
       ...process.env,
       WEB_APP_BASE_URL: `http://localhost:${PORT}`
     }
+  },
+  /*
+  "remote-mcp-osc": {
+    command: "npx",
+    args: ["-y", "@osaas/client-mcp"],
+    env: {
+      OSC_ACCESS_TOKEN: process.env.OSC_ACCESS_TOKEN || '',
+    }
   }
+  */
 };
 
 
@@ -745,21 +709,16 @@ app.listen(PORT, () => {
   console.log(`Open http://localhost:${PORT} in your browser`);
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`API key configured: ${!!process.env.ANTHROPIC_API_KEY}`);
-  console.log(`Workspace directory: ${workspaceDir || WORKSPACE_DIR}`);
-  
-  // Start MCP server
-  startMCPServer();
+  console.log(`Workspace directory: ${workspaceDir || WORKSPACE_DIR}`);  
 });
 
 // Graceful shutdown handling
 process.on('SIGINT', () => {
   console.log('\n🛑 Received SIGINT, shutting down gracefully...');
-  stopMCPServer();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
-  stopMCPServer();
   process.exit(0);
 });
