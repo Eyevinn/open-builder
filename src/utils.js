@@ -137,11 +137,13 @@ class ConfigUtils {
     const options = {
       mcpServers,
       permissionPromptToolName: 'mcp__permission-prompt__permission_prompt',
-      permissionMode: 'default'
+      permissionMode: 'default',
+      allowedTools: ['mcp__permission-prompt', 'mcp__deploy']
     };
     
-    // Only add additionalDirectories if we have a session workspace
+    // Set working directory to session workspace but don't change process cwd
     if (sessionWorkspaceDir) {
+      options.cwd = sessionWorkspaceDir;
       options.additionalDirectories = [sessionWorkspaceDir];
     }
 

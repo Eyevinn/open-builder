@@ -182,7 +182,7 @@ class DeployMCPServer {
 
       await uploadFiles(buildPath);
       console.error(`All files from "${buildPath}" uploaded to bucket "${bucketName}"`);
-      const publicUrl = new URL(bucketName, minioInstance.url);
+      const publicUrl = new URL(path.join(bucketName, 'index.html'), minioInstance.url);
       const deploymentUrl = publicUrl.toString();
       const result = {
         url: deploymentUrl,
