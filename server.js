@@ -96,15 +96,6 @@ const MCP_SERVERS = {
       WEB_APP_BASE_URL: `http://localhost:${PORT}`
     }
   },
-  /*
-  "remote-mcp-osc": {
-    command: "npx",
-    args: ["-y", "@osaas/client-mcp"],
-    env: {
-      OSC_ACCESS_TOKEN: process.env.OSC_ACCESS_TOKEN || '',
-    }
-  }
-  */
 };
 
 

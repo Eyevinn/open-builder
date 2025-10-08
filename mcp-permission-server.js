@@ -44,7 +44,7 @@ initializeFetch().then(() => {
 });
 
 // Configuration
-const WEB_APP_BASE_URL = process.env.WEB_APP_BASE_URL || 'http://localhost:3001';
+const WEB_APP_BASE_URL = `http://localhost:${process.env.PORT}`;
 
 class PermissionMCPServer {
   constructor() {
