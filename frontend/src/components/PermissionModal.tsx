@@ -1,3 +1,9 @@
+/**
+ * PermissionModal Component - Permission management interface
+ * Copyright (c) 2024 Eyevinn Technology AB  
+ * Licensed under the MIT License
+ */
+
 import React, { useState, useEffect } from 'react';
 import './PermissionModal.css';
 

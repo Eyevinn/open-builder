@@ -11,11 +11,22 @@
     "claude",
     "ai",
     "frontend",
-    "api"
+    "api",
+    "websocket",
+    "permissions",
+    "mcp"
   ],
-  "author": "",
-  "license": "ISC",
-  "description": "Web frontend for Claude Code SDK with server-side integration",
+  "author": "Eyevinn Technology AB",
+  "license": "MIT",
+  "description": "Web-based interface for Claude Code with permission controls and session management",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eyevinn/open-builder.git"
+  },
+  "homepage": "https://github.com/Eyevinn/open-builder#readme",
+  "bugs": {
+    "url": "https://github.com/Eyevinn/open-builder/issues"
+  },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.9",
     "@modelcontextprotocol/sdk": "^1.19.1",

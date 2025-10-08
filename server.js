@@ -1,3 +1,9 @@
+/**
+ * Open Builder - Web-based interface for Claude Code
+ * Copyright (c) 2024 Eyevinn Technology AB
+ * Licensed under the MIT License
+ */
+
 const express = require('express');
 const path = require('path');
 const cors = require('cors');

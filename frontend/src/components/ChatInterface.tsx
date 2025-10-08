@@ -1,3 +1,9 @@
+/**
+ * ChatInterface Component - Main chat interface for Claude interactions
+ * Copyright (c) 2024 Eyevinn Technology AB
+ * Licensed under the MIT License
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useClaudeContext } from '../contexts/ClaudeContext';
 import FormattedMessage from './FormattedMessage';

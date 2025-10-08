@@ -1,85 +1,155 @@
-# Claude Code Web Application
+# Open Builder
 
-A unified web application that provides a modern frontend interface to the Claude Code SDK. The application features server-side Claude integration with environment-based API key management for enhanced security.
+A web-based interface for Claude Code that provides a user-friendly way to interact with Claude AI through a browser interface with permission controls and session management.
 
-## 🚀 Features
+**Developed by [Eyevinn Technology AB](https://www.eyevinn.se/)**
 
-- **Unified Application**: Single server serving both backend API and frontend static files
-- **Server-Side Integration**: All Claude API interactions happen on the server for security
-- **Environment-Based Configuration**: API key managed through environment variables
-- **Configurable Workspace**: Sandboxed directory for Claude file operations
-- **Real-time Chat Interface**: Stream responses from Claude in real-time
-- **Responsive Design**: Works seamlessly on desktop and mobile devices
-- **Auto-Connection**: Frontend automatically connects to the backend on startup
+## Features
 
-## 🏗️ Architecture
+- **Web Interface**: Modern React-based frontend for Claude interactions
+- **Permission System**: User approval required for potentially sensitive operations
+- **Session Management**: Claude SDK session continuity across conversations
+- **File Workspace**: Sandboxed directory for Claude file operations
+- **MCP Integration**: Support for Model Context Protocol servers
+- **Real-time Streaming**: Server-sent events for live response streaming
+- **Docker Support**: Complete containerization for easy deployment
 
-This is a single Node.js application that:
+## Quick Start
 
-1. **Serves Static Files**: Built React frontend served from `/frontend/build`
-2. **Provides API Endpoints**: RESTful API for Claude integration
-3. **Handles Authentication**: API key stored securely as environment variable
-4. **Manages Workspace**: Creates and manages a sandboxed directory for file operations
-5. **Streams Responses**: Server-Sent Events for real-time chat experience
+### Using Docker (Recommended)
 
-## 📋 Prerequisites
+1. **Set up environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your ANTHROPIC_API_KEY
+   ```
 
-- Node.js 16.0 or higher
-- npm 7.0 or higher
+2. **Run with Docker Compose:**
+   ```bash
+   # Production deployment
+   docker-compose up -d
+
+   # Development with hot reload
+   docker-compose --profile dev up -d open-builder-dev
+   ```
+
+3. **Access the application:**
+   - Open http://localhost:3001 in your browser
+
+### Prerequisites
+
+- Docker and Docker Compose (for containerized deployment)
+- Node.js 18+ and npm (for local development)
 - Anthropic API key ([Get one here](https://console.anthropic.com))
 
-## 🛠️ Installation & Setup
+## Local Development
 
-### 1. Clone and Install
+### Setup
 
-```bash
-git clone <your-repo-url>
-cd open-builder
-npm install
-```
+1. **Clone and install dependencies:**
+   ```bash
+   git clone <repository-url>
+   cd open-builder
+   npm install
+   cd frontend && npm install && cd ..
+   ```
 
-This will automatically install both backend and frontend dependencies.
+2. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your ANTHROPIC_API_KEY
+   ```
 
-### 2. Configure Environment Variables
+3. **Start development servers:**
+   ```bash
+   # Backend (from root directory)
+   npm start
 
-```bash
-cp .env.example .env
-```
+   # Frontend (in separate terminal)
+   cd frontend && npm start
+   ```
 
-Edit the `.env` file and set your Anthropic API key:
+4. **Access the application:**
+   - Frontend: http://localhost:3000
+   - Backend: http://localhost:3001
 
-```bash
-# .env
-PORT=3001
-ANTHROPIC_API_KEY=sk-ant-your-actual-api-key-here
-CLAUDE_WORKSPACE_DIR=./usercontent
-```
+## Docker Deployment
 
-**Important**: Replace `sk-ant-your-actual-api-key-here` with your actual Anthropic API key from [console.anthropic.com](https://console.anthropic.com).
-
-### 3. Build the Frontend
-
-```bash
-npm run build
-```
-
-This builds the React frontend for production and places it in `frontend/build`.
-
-### 4. Start the Application
+### Production Build
 
 ```bash
-npm start
+# Build the Docker image
+docker build -t open-builder .
+
+# Run the container
+docker run -d \
+  -p 3001:3001 \
+  -e ANTHROPIC_API_KEY=your-api-key \
+  -v workspace_data:/app/usercontent \
+  --name open-builder \
+  open-builder
 ```
 
-The application will start on `http://localhost:3001` (or the port specified in your `.env` file).
+### Docker Compose
 
-## 🚀 Usage
+The `docker-compose.yml` provides both production and development configurations:
 
-1. **Start the Server**: Run `npm start`
-2. **Open Browser**: Navigate to `http://localhost:3001`
-3. **Auto-Connect**: The app automatically connects to the backend
-4. **Workspace Ready**: Claude can read/write files in the configured workspace
-5. **Start Chatting**: Begin interacting with Claude immediately
+```bash
+# Production (default)
+docker-compose up -d
+
+# Development with live reload
+docker-compose --profile dev up -d open-builder-dev
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | - | Your Anthropic API key |
+| `PORT` | No | 3001 | Server port |
+| `CLAUDE_WORKSPACE_DIR` | No | `./usercontent` | Directory for file operations |
+| `OSC_ACCESS_TOKEN` | No | - | Optional OSaaS access token |
+| `DEBUG` | No | 0 | Enable debug logging (1) |
+
+### Data Persistence
+
+User files are stored in the workspace directory. When using Docker:
+
+- **Development**: Files are mounted from your local directory
+- **Production**: Files persist in a Docker volume named `workspace_data`
+
+To backup/restore workspace data:
+
+```bash
+# Backup
+docker run --rm -v workspace_data:/data -v $(pwd):/backup alpine tar czf /backup/workspace-backup.tar.gz -C /data .
+
+# Restore
+docker run --rm -v workspace_data:/data -v $(pwd):/backup alpine tar xzf /backup/workspace-backup.tar.gz -C /data
+```
+
+## 🔗 Links
+
+- **GitHub Repository**: [https://github.com/Eyevinn/open-builder](https://github.com/Eyevinn/open-builder)
+- **Eyevinn Technology**: [https://www.eyevinn.se/](https://www.eyevinn.se/)
+- **Claude Code SDK**: [https://github.com/anthropics/claude-code](https://github.com/anthropics/claude-code)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2024 Eyevinn Technology AB
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
 ## 📁 Project Structure
 
