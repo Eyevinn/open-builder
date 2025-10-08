@@ -11,7 +11,7 @@ import PermissionModal from './PermissionModal';
 import './ChatInterface.css';
 
 const ChatInterface: React.FC = () => {
-  const { messages, isLoading, sendMessage, clearMessages } =
+  const { messages, isLoading, sendMessage, clearMessages, downloadWorkspace, getWorkspaceInfo } =
     useClaudeContext();
   const [inputValue, setInputValue] = useState('');
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
@@ -19,6 +19,8 @@ const ChatInterface: React.FC = () => {
   const [permissionWebSocket, setPermissionWebSocket] =
     useState<WebSocket | null>(null);
   const [modalAutoOpened, setModalAutoOpened] = useState(false);
+  const [isDownloadingWorkspace, setIsDownloadingWorkspace] = useState(false);
+  const [workspaceHasContent, setWorkspaceHasContent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -28,6 +30,11 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Check workspace content when messages change or on mount
+  useEffect(() => {
+    checkWorkspaceContent();
+  }, [messages.length, getWorkspaceInfo]);
 
   // Connect to permission events to track pending count
   useEffect(() => {
@@ -158,6 +165,28 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  const checkWorkspaceContent = async () => {
+    try {
+      const workspaceInfo = await getWorkspaceInfo();
+      setWorkspaceHasContent(workspaceInfo?.hasContent || false);
+    } catch (error) {
+      console.error('Failed to check workspace content:', error);
+      setWorkspaceHasContent(false);
+    }
+  };
+
+  const handleDownloadWorkspace = async () => {
+    try {
+      setIsDownloadingWorkspace(true);
+      await downloadWorkspace();
+    } catch (error) {
+      console.error('Failed to download workspace:', error);
+      // You could add a toast notification here if desired
+    } finally {
+      setIsDownloadingWorkspace(false);
+    }
+  };
+
   return (
     <div className="chat-interface">
       <div className="chat-header">
@@ -173,6 +202,16 @@ const ChatInterface: React.FC = () => {
           >
             🗑️ Clear
           </button>
+          {workspaceHasContent && (
+            <button
+              className="session-button download"
+              onClick={handleDownloadWorkspace}
+              disabled={isLoading || isDownloadingWorkspace}
+              title="Download Workspace Files"
+            >
+              {isDownloadingWorkspace ? '📦 Preparing...' : '📦 Download'}
+            </button>
+          )}
           <button
             className={`permission-button-header ${pendingPermissionCount > 0 ? 'has-pending' : ''}`}
             onClick={() => {
