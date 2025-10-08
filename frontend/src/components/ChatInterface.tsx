@@ -14,7 +14,7 @@ const ChatInterface: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
   const [pendingPermissionCount, setPendingPermissionCount] = useState(0);
-  const [permissionEventSource, setPermissionEventSource] = useState<EventSource | null>(null);
+  const [permissionWebSocket, setPermissionWebSocket] = useState<WebSocket | null>(null);
   const [modalAutoOpened, setModalAutoOpened] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -62,14 +62,16 @@ const ChatInterface: React.FC = () => {
     };
 
     const connectToPermissionEvents = () => {
-      const es = new EventSource('/api/permissions/events');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/permissions/ws`;
+      const ws = new WebSocket(wsUrl);
       
-      es.onopen = () => {
-        console.log('Permission event stream connected for notifications');
+      ws.onopen = () => {
+        console.log('Permission WebSocket connected for notifications');
         requestNotificationPermission();
       };
 
-      es.onmessage = (event) => {
+      ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           
@@ -96,27 +98,33 @@ const ChatInterface: React.FC = () => {
               break;
           }
         } catch (error) {
-          console.error('Error parsing permission event for notifications:', error);
+          console.error('Error parsing permission WebSocket message for notifications:', error);
         }
       };
 
-      es.onerror = (error) => {
-        console.error('Permission notification stream error:', error);
+      ws.onerror = (error) => {
+        console.error('Permission notification WebSocket error:', error);
         // Retry connection after a delay
         setTimeout(connectToPermissionEvents, 5000);
       };
 
-      setPermissionEventSource(es);
+      ws.onclose = () => {
+        console.log('Permission notification WebSocket closed');
+        // Retry connection after a delay
+        setTimeout(connectToPermissionEvents, 5000);
+      };
+
+      setPermissionWebSocket(ws);
     };
 
     connectToPermissionEvents();
 
     return () => {
-      if (permissionEventSource) {
-        permissionEventSource.close();
+      if (permissionWebSocket) {
+        permissionWebSocket.close();
       }
     };
-  }, [isPermissionModalOpen, permissionEventSource]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

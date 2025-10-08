@@ -18,26 +18,28 @@ interface PermissionModalProps {
 
 const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, autoOpened = false }) => {
   const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [eventSource, setEventSource] = useState<EventSource | null>(null);
+  const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (isOpen && !eventSource) {
-      // Connect to permission events stream
-      const es = new EventSource('/api/permissions/events');
+    if (isOpen && !webSocket) {
+      // Connect to permission WebSocket
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/permissions/ws`;
+      const ws = new WebSocket(wsUrl);
       
-      es.onopen = () => {
-        console.log('Permission event stream connected');
+      ws.onopen = () => {
+        console.log('Permission WebSocket connected');
         setIsConnected(true);
       };
 
-      es.onmessage = (event) => {
+      ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           
           switch (data.type) {
             case 'connected':
-              console.log('Connected to permission events');
+              console.log('Connected to permission WebSocket');
               break;
               
             case 'pending-permissions':
@@ -56,31 +58,34 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
               console.log('Unknown permission event type:', data.type);
           }
         } catch (error) {
-          console.error('Error parsing permission event:', error);
+          console.error('Error parsing permission WebSocket message:', error);
         }
       };
 
-      es.onerror = (error) => {
-        console.error('Permission event stream error:', error);
+      ws.onerror = (error) => {
+        console.error('Permission WebSocket error:', error);
         setIsConnected(false);
       };
 
-      setEventSource(es);
+      ws.onclose = () => {
+        console.log('Permission WebSocket closed');
+        setIsConnected(false);
+      };
+
+      setWebSocket(ws);
     }
 
     return () => {
-      if (eventSource) {
-        eventSource.close();
-        setEventSource(null);
-        setIsConnected(false);
+      if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+        webSocket.close();
       }
     };
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen && eventSource) {
-      eventSource.close();
-      setEventSource(null);
+    if (!isOpen && webSocket) {
+      webSocket.close();
+      setWebSocket(null);
       setIsConnected(false);
       setPermissions([]);
     }

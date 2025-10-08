@@ -4,15 +4,18 @@ const cors = require('cors');
 const fs = require('fs-extra');
 const { query } = require('@anthropic-ai/claude-agent-sdk');
 const { spawn } = require('child_process');
+const WebSocket = require('ws');
+const http = require('http');
 require('dotenv').config();
 
 // Permission management system
 const pendingPermissions = new Map(); // Store pending permission requests
-const permissionClients = new Set(); // Store connected SSE clients
+const permissionClients = new Map(); // Store connected WebSocket clients with unique IDs
 const EventEmitter = require('events');
 const permissionEmitter = new EventEmitter();
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
 const WORKSPACE_DIR = process.env.CLAUDE_WORKSPACE_DIR || './usercontent';
 
@@ -537,47 +540,75 @@ app.post('/api/permissions/respond', (req, res) => {
   }
 });
 
-// Server-Sent Events for real-time permission updates
-app.get('/api/permissions/events', (req, res) => {
-  console.log('🔗 Client connected to permission events stream');
+// WebSocket setup for real-time permission updates
+const wss = new WebSocket.Server({ server, path: '/api/permissions/ws' });
+
+// Generate unique client ID
+function generateClientId() {
+  return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+wss.on('connection', (ws, req) => {
+  const clientId = generateClientId();
+  console.log(`🔗 WebSocket client connected: ${clientId}`);
   
-  // Set headers for Server-Sent Events
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  });
+  // Store client with unique ID to prevent mixing
+  permissionClients.set(clientId, ws);
+  console.log(`🔗 Added client to permission stream. Total clients: ${permissionClients.size}`);
 
   // Send initial connection message
-  res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Permission event stream connected' })}\n\n`);
-  
-  // Add client to the set
-  permissionClients.add(res);
-  console.log(`🔗 Added client to permission stream. Total clients: ${permissionClients.size}`);
+  ws.send(JSON.stringify({ 
+    type: 'connected', 
+    message: 'Permission WebSocket connected',
+    clientId: clientId 
+  }));
 
   // Send current pending permissions
   const pending = Array.from(pendingPermissions.values());
   if (pending.length > 0) {
-    res.write(`data: ${JSON.stringify({ type: 'pending-permissions', permissions: pending })}\n\n`);
+    ws.send(JSON.stringify({ type: 'pending-permissions', permissions: pending }));
   }
 
+  // Permission event handlers for this specific client
   const onPermissionRequest = (permission) => {
-    res.write(`data: ${JSON.stringify({ type: 'permission-request', permission })}\n\n`);
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'permission-request', permission }));
+    }
   };
 
   const onPermissionResponse = (response) => {
-    res.write(`data: ${JSON.stringify({ type: 'permission-response', response })}\n\n`);
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'permission-response', response }));
+    }
   };
 
+  // Add event listeners
   permissionEmitter.on('permission-request', onPermissionRequest);
   permissionEmitter.on('permission-response', onPermissionResponse);
 
+  // Handle WebSocket messages (if needed for future functionality)
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      console.log(`📨 Received WebSocket message from ${clientId}:`, data);
+      // Handle client messages if needed
+    } catch (error) {
+      console.error(`❌ Error parsing WebSocket message from ${clientId}:`, error);
+    }
+  });
+
   // Clean up when client disconnects
-  req.on('close', () => {
-    permissionClients.delete(res);
-    console.log(`🔗 Client disconnected from permission stream. Total clients: ${permissionClients.size}`);
+  ws.on('close', () => {
+    permissionClients.delete(clientId);
+    console.log(`🔗 WebSocket client disconnected: ${clientId}. Total clients: ${permissionClients.size}`);
+    permissionEmitter.removeListener('permission-request', onPermissionRequest);
+    permissionEmitter.removeListener('permission-response', onPermissionResponse);
+  });
+
+  // Handle WebSocket errors
+  ws.on('error', (error) => {
+    console.error(`❌ WebSocket error for client ${clientId}:`, error);
+    permissionClients.delete(clientId);
     permissionEmitter.removeListener('permission-request', onPermissionRequest);
     permissionEmitter.removeListener('permission-response', onPermissionResponse);
   });
@@ -695,10 +726,11 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Claude Code Web Application running on port ${PORT}`);
   console.log(`Open http://localhost:${PORT} in your browser`);
   console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Permission WebSocket: ws://localhost:${PORT}/api/permissions/ws`);
   console.log(`API key configured: ${!!process.env.ANTHROPIC_API_KEY}`);
   console.log(`Workspace directory: ${workspaceDir || WORKSPACE_DIR}`);  
 });
