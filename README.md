@@ -4,6 +4,12 @@ A web-based interface for Claude Code that provides a user-friendly way to inter
 
 **Developed by [Eyevinn Technology AB](https://www.eyevinn.se/)**
 
+## Screenshots
+
+![Open Builder Chat Interface](screenshots/builder-chat.png)
+
+*Modern web interface for Claude Code with real-time chat, permission controls, and session management*
+
 ## Features
 
 - **Web Interface**: Modern React-based frontend for Claude interactions
