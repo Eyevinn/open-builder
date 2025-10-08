@@ -17,6 +17,7 @@ A web-based interface for Claude Code that provides a user-friendly way to inter
 - **Session Management**: Claude SDK session continuity across conversations
 - **File Workspace**: Sandboxed directory for Claude file operations
 - **MCP Integration**: Support for Model Context Protocol servers
+- **Static Website Deployment**: Deploy static websites to Open Source Cloud (OSaaS)
 - **Real-time Streaming**: Server-sent events for live response streaming
 - **Docker Support**: Complete containerization for easy deployment
 
@@ -126,8 +127,10 @@ docker-compose down
 | `ANTHROPIC_API_KEY`    | Yes      | -               | Your Anthropic API key        |
 | `PORT`                 | No       | 3001            | Server port                   |
 | `CLAUDE_WORKSPACE_DIR` | No       | `./usercontent` | Directory for file operations |
-| `OSC_ACCESS_TOKEN`     | No       | -               | Optional OSaaS access token   |
+| `OSC_ACCESS_TOKEN`     | No*      | -               | OSaaS access token (required for deployment features) |
 | `DEBUG`                | No       | 0               | Enable debug logging (1)      |
+
+**Note**: `OSC_ACCESS_TOKEN` is required if you want to use the deployment features to publish static websites to Open Source Cloud (OSaaS).
 
 ### Data Persistence
 

@@ -34,6 +34,8 @@ RUN npm install -g @osaas/cli
 # Copy backend source files
 COPY server.js ./
 COPY mcp-permission-server.js ./
+COPY mcp-deploy-server.js ./
+COPY src/ ./src/
 COPY .env.example ./
 # Copy Claude Code settings to home directory for default permissions
 COPY claude-code-settings.json /home/openbuilder/.claude/settings.json
