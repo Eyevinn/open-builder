@@ -6,7 +6,7 @@ import './App.css';
 
 function AppContent() {
   const { isConnected } = useClaudeContext();
-  
+
   return (
     <div className="App">
       {isConnected ? <ChatInterface /> : <ConnectionSetup />}

@@ -25,7 +25,9 @@ interface HealthCheckResponse {
 }
 
 const PermissionDisplay: React.FC = () => {
-  const [healthData, setHealthData] = useState<HealthCheckResponse | null>(null);
+  const [healthData, setHealthData] = useState<HealthCheckResponse | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -41,7 +43,9 @@ const PermissionDisplay: React.FC = () => {
       setHealthData(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch health data');
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch health data'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -83,14 +87,17 @@ const PermissionDisplay: React.FC = () => {
 
   return (
     <div className="permission-display">
-      <div 
+      <div
         className={`status-header ${hasValidWorkspace ? 'success' : 'warning'}`}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className={`status-indicator ${hasValidWorkspace ? 'success' : 'warning'}`}></div>
+        <div
+          className={`status-indicator ${hasValidWorkspace ? 'success' : 'warning'}`}
+        ></div>
         <span className="status-text">
           Workspace: {workspace?.path || 'Not configured'}
-          {workspace?.fileCount !== undefined && ` (${workspace.fileCount} files)`}
+          {workspace?.fileCount !== undefined &&
+            ` (${workspace.fileCount} files)`}
         </span>
         <button className={`expand-button ${isExpanded ? 'expanded' : ''}`}>
           ▼
@@ -103,7 +110,9 @@ const PermissionDisplay: React.FC = () => {
             <h4>API Configuration</h4>
             <div className="detail-item">
               <span className="label">API Key:</span>
-              <span className={`value ${healthData?.hasApiKey ? 'success' : 'error'}`}>
+              <span
+                className={`value ${healthData?.hasApiKey ? 'success' : 'error'}`}
+              >
                 {healthData?.apiKeyStatus || 'Not configured'}
               </span>
             </div>
@@ -111,27 +120,35 @@ const PermissionDisplay: React.FC = () => {
 
           <div className="detail-section">
             <h4>Workspace Configuration</h4>
-            
+
             <div className="detail-item">
               <span className="label">Status:</span>
-              <span className={`value ${hasValidWorkspace ? 'success' : 'error'}`}>
+              <span
+                className={`value ${hasValidWorkspace ? 'success' : 'error'}`}
+              >
                 {workspace?.exists ? 'Active' : 'Not found'}
               </span>
             </div>
 
             <div className="detail-item">
               <span className="label">Configured Path:</span>
-              <span className="value path">{workspace?.configured || 'Not set'}</span>
+              <span className="value path">
+                {workspace?.configured || 'Not set'}
+              </span>
             </div>
 
             <div className="detail-item">
               <span className="label">Resolved Path:</span>
-              <span className="value path">{workspace?.path || 'Not resolved'}</span>
+              <span className="value path">
+                {workspace?.path || 'Not resolved'}
+              </span>
             </div>
 
             <div className="detail-item">
               <span className="label">Is Properly Configured:</span>
-              <span className={`value ${workspace?.isConfigured ? 'success' : 'warning'}`}>
+              <span
+                className={`value ${workspace?.isConfigured ? 'success' : 'warning'}`}
+              >
                 {workspace?.isConfigured ? 'Yes' : 'Path mismatch'}
               </span>
             </div>
@@ -140,13 +157,17 @@ const PermissionDisplay: React.FC = () => {
               <>
                 <div className="detail-item">
                   <span className="label">Readable:</span>
-                  <span className={`value ${workspace.permissions.readable ? 'success' : 'error'}`}>
+                  <span
+                    className={`value ${workspace.permissions.readable ? 'success' : 'error'}`}
+                  >
                     {workspace.permissions.readable ? 'Yes' : 'No'}
                   </span>
                 </div>
                 <div className="detail-item">
                   <span className="label">Writable:</span>
-                  <span className={`value ${workspace.permissions.writable ? 'success' : 'error'}`}>
+                  <span
+                    className={`value ${workspace.permissions.writable ? 'success' : 'error'}`}
+                  >
                     {workspace.permissions.writable ? 'Yes' : 'No'}
                   </span>
                 </div>
@@ -174,7 +195,9 @@ const PermissionDisplay: React.FC = () => {
                 <span className="label">Recent Files:</span>
                 <div className="file-list">
                   {workspace.files.map((file, index) => (
-                    <span key={index} className="file-name">{file}</span>
+                    <span key={index} className="file-name">
+                      {file}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -191,9 +214,10 @@ const PermissionDisplay: React.FC = () => {
           <div className="detail-section">
             <h4>Permissions</h4>
             <p className="permission-note">
-              Claude can read and write files within the configured workspace directory. 
-              All file operations are sandboxed for security. Permission requests are 
-              automatically logged and approved for the web interface.
+              Claude can read and write files within the configured workspace
+              directory. All file operations are sandboxed for security.
+              Permission requests are automatically logged and approved for the
+              web interface.
             </p>
           </div>
 

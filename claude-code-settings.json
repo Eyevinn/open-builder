@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(git status:*)",
+      "Bash(gh pr:*)",
+      "FileSystem(read:/usercontent/*)",
+      "FileSystem(write:/usercontent/*)",
+      "FileSystem(list:/usercontent/*)",
+      "FileSystem(delete:/usercontent/*)",
+      "FileSystem(createDirectory:/usercontent/*)",
+      "Edit(//usercontent/**)",
+      "MultiEdit(//usercontent/**)",
+      "Write(//usercontent/**)"
+    ],
+    "additionalDirectories": ["/usercontent"]
+  }
+}

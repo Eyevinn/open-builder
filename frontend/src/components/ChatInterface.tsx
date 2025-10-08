@@ -11,16 +11,13 @@ import PermissionModal from './PermissionModal';
 import './ChatInterface.css';
 
 const ChatInterface: React.FC = () => {
-  const { 
-    messages, 
-    isLoading, 
-    sendMessage, 
-    clearMessages
-  } = useClaudeContext();
+  const { messages, isLoading, sendMessage, clearMessages } =
+    useClaudeContext();
   const [inputValue, setInputValue] = useState('');
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
   const [pendingPermissionCount, setPendingPermissionCount] = useState(0);
-  const [permissionWebSocket, setPermissionWebSocket] = useState<WebSocket | null>(null);
+  const [permissionWebSocket, setPermissionWebSocket] =
+    useState<WebSocket | null>(null);
   const [modalAutoOpened, setModalAutoOpened] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -47,12 +44,15 @@ const ChatInterface: React.FC = () => {
 
     const showNotification = (permission: any) => {
       if ('Notification' in window && Notification.permission === 'granted') {
-        const notification = new Notification('Permission Request - Claude Code', {
-          body: `Claude is requesting permission: ${permission.description}`,
-          icon: '/favicon.ico',
-          tag: `permission-${permission.id}`,
-          requireInteraction: true,
-        });
+        const notification = new Notification(
+          'Permission Request - Claude Code',
+          {
+            body: `Claude is requesting permission: ${permission.description}`,
+            icon: '/favicon.ico',
+            tag: `permission-${permission.id}`,
+            requireInteraction: true
+          }
+        );
 
         notification.onclick = () => {
           window.focus();
@@ -71,7 +71,7 @@ const ChatInterface: React.FC = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/api/permissions/ws`;
       const ws = new WebSocket(wsUrl);
-      
+
       ws.onopen = () => {
         console.log('Permission WebSocket connected for notifications');
         requestNotificationPermission();
@@ -80,31 +80,34 @@ const ChatInterface: React.FC = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+
           switch (data.type) {
             case 'pending-permissions':
               setPendingPermissionCount(data.permissions?.length || 0);
               break;
-              
+
             case 'permission-request':
-              setPendingPermissionCount(prev => prev + 1);
-              
+              setPendingPermissionCount((prev) => prev + 1);
+
               // Show browser notification
               showNotification(data.permission);
-              
+
               // Auto-open modal for new permission requests to make them more visible
               if (!isPermissionModalOpen) {
                 setIsPermissionModalOpen(true);
                 setModalAutoOpened(true);
               }
               break;
-              
+
             case 'permission-response':
-              setPendingPermissionCount(prev => Math.max(0, prev - 1));
+              setPendingPermissionCount((prev) => Math.max(0, prev - 1));
               break;
           }
         } catch (error) {
-          console.error('Error parsing permission WebSocket message for notifications:', error);
+          console.error(
+            'Error parsing permission WebSocket message for notifications:',
+            error
+          );
         }
       };
 
@@ -162,7 +165,7 @@ const ChatInterface: React.FC = () => {
           <h2>Open Builder</h2>
         </div>
         <div className="chat-header-controls">
-          <button 
+          <button
             className="session-button clear"
             onClick={handleClearMessages}
             disabled={isLoading}
@@ -170,7 +173,7 @@ const ChatInterface: React.FC = () => {
           >
             🗑️ Clear
           </button>
-          <button 
+          <button
             className={`permission-button-header ${pendingPermissionCount > 0 ? 'has-pending' : ''}`}
             onClick={() => {
               setIsPermissionModalOpen(true);
@@ -180,35 +183,35 @@ const ChatInterface: React.FC = () => {
           >
             🔐 Permissions
             {pendingPermissionCount > 0 && (
-              <span className="permission-badge">
-                {pendingPermissionCount}
-              </span>
+              <span className="permission-badge">{pendingPermissionCount}</span>
             )}
           </button>
         </div>
       </div>
-      
+
       <div className="messages-container">
-        
         {messages.length === 0 && (
           <div className="welcome-message">
             <h3>Welcome to Open Builder!</h3>
-            <p>Ask me anything about coding, get help with your projects, or request code generation.</p>
+            <p>
+              Ask me anything about coding, get help with your projects, or
+              request code generation.
+            </p>
           </div>
         )}
-        
+
         {messages.map((message) => (
           <div key={message.id}>
-            <FormattedMessage 
-              content={message.content} 
-              isUser={message.role === 'user'} 
+            <FormattedMessage
+              content={message.content}
+              isUser={message.role === 'user'}
             />
             <div className="message-timestamp">
               {message.timestamp.toLocaleTimeString()}
             </div>
           </div>
         ))}
-        
+
         {isLoading && (
           <div className="message assistant loading">
             <div className="message-content">
@@ -220,10 +223,10 @@ const ChatInterface: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
-      
+
       <form onSubmit={handleSubmit} className="input-form">
         <textarea
           value={inputValue}
@@ -238,7 +241,7 @@ const ChatInterface: React.FC = () => {
         </button>
       </form>
 
-      <PermissionModal 
+      <PermissionModal
         isOpen={isPermissionModalOpen}
         onClose={() => setIsPermissionModalOpen(false)}
         autoOpened={modalAutoOpened}

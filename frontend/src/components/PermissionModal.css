@@ -338,40 +338,40 @@
     max-height: 90vh;
     margin: 20px;
   }
-  
+
   .permission-modal-header {
     padding: 16px 20px;
     flex-wrap: wrap;
     gap: 12px;
   }
-  
+
   .permission-modal-header h2 {
     font-size: 1.2rem;
   }
-  
+
   .permission-header {
     flex-direction: column;
     gap: 12px;
     padding: 16px;
   }
-  
+
   .permission-icon-action {
     align-items: center;
   }
-  
+
   .permission-timestamp {
     align-self: flex-start;
   }
-  
+
   .permission-actions {
     flex-direction: column;
     padding: 0 16px 16px 16px;
   }
-  
+
   .permissions-list {
     padding: 12px;
   }
-  
+
   .permission-modal-footer {
     padding: 16px 20px;
   }

@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  open-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OSC_ACCESS_TOKEN=${OSC_ACCESS_TOKEN:-}
+      - CLAUDE_WORKSPACE_DIR=/app/usercontent
+      - DEBUG=${DEBUG:-0}
+    volumes:
+      # Mount workspace directory for persistence
+      - workspace_data:/app/usercontent
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Development service with hot reload
+  open-builder-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - '3001:3001'
+      - '3000:3000' # Frontend dev server
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OSC_ACCESS_TOKEN=${OSC_ACCESS_TOKEN:-}
+      - CLAUDE_WORKSPACE_DIR=/app/usercontent
+      - DEBUG=${DEBUG:-1}
+    volumes:
+      # Mount source code for development
+      - .:/app
+      - /app/node_modules
+      - /app/frontend/node_modules
+      - workspace_data:/app/usercontent
+    command:
+      [
+        'sh',
+        '-c',
+        'npm install && cd frontend && npm install && cd .. && npm run dev'
+      ]
+    restart: unless-stopped
+    profiles:
+      - dev
+
+volumes:
+  workspace_data:
+    driver: local

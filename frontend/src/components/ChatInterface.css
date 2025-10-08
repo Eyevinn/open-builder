@@ -264,7 +264,9 @@
 }
 
 @keyframes typing {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.8);
     opacity: 0.5;
   }
@@ -316,7 +318,9 @@
   border-radius: 0.5rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   align-self: flex-end;
 }
 
@@ -338,54 +342,54 @@
     flex-direction: column;
     gap: 12px;
   }
-  
+
   .chat-header-left {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .chat-header h2 {
     font-size: 1.3rem;
   }
-  
+
   .session-info {
     font-size: 0.8rem;
   }
-  
+
   .session-id {
     font-size: 0.75rem;
   }
-  
+
   .chat-header-controls {
     flex-wrap: wrap;
     gap: 0.5rem;
   }
-  
+
   .session-button {
     font-size: 0.8rem;
     padding: 6px 10px;
   }
-  
+
   .permission-button-header {
     font-size: 0.85rem;
     padding: 6px 12px;
   }
-  
+
   .messages-container {
     padding: 0.5rem;
   }
-  
+
   .message {
     max-width: 95%;
   }
-  
+
   .input-form {
     padding: 1rem;
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .input-form button {
     align-self: stretch;
   }

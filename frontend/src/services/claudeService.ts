@@ -9,7 +9,6 @@ export interface ClaudeServiceConfig {
   baseUrl?: string;
 }
 
-
 interface StreamEvent {
   type: 'start' | 'message' | 'complete' | 'error';
   content?: string;
@@ -26,9 +25,6 @@ class ClaudeService {
     this.baseUrl = config.baseUrl || '/api';
   }
 
-
-
-
   async testConnection(): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/status`);
@@ -40,17 +36,20 @@ class ClaudeService {
     }
   }
 
-  async *sendMessage(prompt: string, sessionId?: string): AsyncGenerator<{ content: string; sessionId?: string }, void, unknown> {
+  async *sendMessage(
+    prompt: string,
+    sessionId?: string
+  ): AsyncGenerator<{ content: string; sessionId?: string }, void, unknown> {
     try {
       const response = await fetch(`${this.baseUrl}/chat/stream`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           prompt,
-          ...(sessionId && { sessionId }),
-        }),
+          ...(sessionId && { sessionId })
+        })
       });
 
       if (!response.ok) {
@@ -78,7 +77,7 @@ class ClaudeService {
             if (line.startsWith('data: ')) {
               try {
                 const eventData: StreamEvent = JSON.parse(line.slice(6));
-                
+
                 if (eventData.type === 'message' && eventData.content) {
                   yield { content: eventData.content };
                 } else if (eventData.type === 'complete') {
@@ -109,11 +108,11 @@ class ClaudeService {
       const response = await fetch(`${this.baseUrl}/chat`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          prompt,
-        }),
+          prompt
+        })
       });
 
       if (!response.ok) {

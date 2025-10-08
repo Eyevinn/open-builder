@@ -1,6 +1,6 @@
 /**
  * PermissionModal Component - Permission management interface
- * Copyright (c) 2024 Eyevinn Technology AB  
+ * Copyright (c) 2024 Eyevinn Technology AB
  * Licensed under the MIT License
  */
 
@@ -19,10 +19,14 @@ interface Permission {
 interface PermissionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  autoOpened?: boolean;  // Indicates if modal was opened automatically vs manually
+  autoOpened?: boolean; // Indicates if modal was opened automatically vs manually
 }
 
-const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, autoOpened = false }) => {
+const PermissionModal: React.FC<PermissionModalProps> = ({
+  isOpen,
+  onClose,
+  autoOpened = false
+}) => {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -33,7 +37,7 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/api/permissions/ws`;
       const ws = new WebSocket(wsUrl);
-      
+
       ws.onopen = () => {
         console.log('Permission WebSocket connected');
         setIsConnected(true);
@@ -42,24 +46,26 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+
           switch (data.type) {
             case 'connected':
               console.log('Connected to permission WebSocket');
               break;
-              
+
             case 'pending-permissions':
               setPermissions(data.permissions || []);
               break;
-              
+
             case 'permission-request':
-              setPermissions(prev => [...prev, data.permission]);
+              setPermissions((prev) => [...prev, data.permission]);
               break;
-              
+
             case 'permission-response':
-              setPermissions(prev => prev.filter(p => p.id !== data.response.id));
+              setPermissions((prev) =>
+                prev.filter((p) => p.id !== data.response.id)
+              );
               break;
-              
+
             default:
               console.log('Unknown permission event type:', data.type);
           }
@@ -104,7 +110,7 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
       const timer = setTimeout(() => {
         onClose();
       }, 1000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [permissions.length, isOpen, isConnected, autoOpened, onClose]);
@@ -114,13 +120,15 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
       const response = await fetch('/api/permissions/respond', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           permissionId,
           approved,
-          reason: approved ? 'Approved by user via web interface' : 'Denied by user via web interface'
-        }),
+          reason: approved
+            ? 'Approved by user via web interface'
+            : 'Denied by user via web interface'
+        })
       });
 
       if (!response.ok) {
@@ -131,7 +139,9 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
       // Permission will be removed from list via the event stream
     } catch (error) {
       console.error('Error responding to permission:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(
+        `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   };
 
@@ -179,7 +189,9 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
         <div className="permission-modal-header">
           <h2>Permission Requests</h2>
           <div className="connection-status">
-            <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+            <span
+              className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}
+            ></span>
             <span className="status-text">
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
@@ -194,7 +206,10 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
             <div className="no-permissions">
               <div className="no-permissions-icon">🔐</div>
               <h3>No Pending Permissions</h3>
-              <p>All permission requests will appear here when Claude needs access to perform operations.</p>
+              <p>
+                All permission requests will appear here when Claude needs
+                access to perform operations.
+              </p>
             </div>
           ) : (
             <div className="permissions-list">
@@ -202,15 +217,21 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
                 <div key={permission.id} className="permission-item">
                   <div className="permission-header">
                     <div className="permission-icon-action">
-                      <span 
+                      <span
                         className="permission-icon"
-                        style={{ backgroundColor: getActionColor(permission.action) }}
+                        style={{
+                          backgroundColor: getActionColor(permission.action)
+                        }}
                       >
                         {getActionIcon(permission.action)}
                       </span>
                       <div className="permission-info">
-                        <h4 className="permission-action">{permission.action}</h4>
-                        <p className="permission-description">{permission.description}</p>
+                        <h4 className="permission-action">
+                          {permission.action}
+                        </h4>
+                        <p className="permission-description">
+                          {permission.description}
+                        </p>
                       </div>
                     </div>
                     <div className="permission-timestamp">
@@ -251,8 +272,9 @@ const PermissionModal: React.FC<PermissionModalProps> = ({ isOpen, onClose, auto
 
         <div className="permission-modal-footer">
           <p className="permission-note">
-            <strong>Security Note:</strong> Only approve permissions you understand and trust. 
-            Claude will wait for your response before proceeding with any operations.
+            <strong>Security Note:</strong> Only approve permissions you
+            understand and trust. Claude will wait for your response before
+            proceeding with any operations.
           </p>
         </div>
       </div>

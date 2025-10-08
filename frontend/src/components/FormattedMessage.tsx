@@ -8,13 +8,14 @@ interface FormattedMessageProps {
   isUser?: boolean;
 }
 
-const FormattedMessage: React.FC<FormattedMessageProps> = ({ content, isUser = false }) => {
+const FormattedMessage: React.FC<FormattedMessageProps> = ({
+  content,
+  isUser = false
+}) => {
   if (isUser) {
     return (
       <div className="message user-message">
-        <div className="message-content">
-          {content}
-        </div>
+        <div className="message-content">{content}</div>
       </div>
     );
   }
@@ -22,7 +23,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content, isUser = f
   return (
     <div className="message claude-message">
       <div className="message-content">
-        <ReactMarkdown 
+        <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
             code: ({ node, className, children, ...props }: any) => {
@@ -41,31 +42,21 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content, isUser = f
               );
             },
             pre: ({ children }: any) => (
-              <div className="code-container">
-                {children}
-              </div>
+              <div className="code-container">{children}</div>
             ),
             blockquote: ({ children }: any) => (
-              <blockquote className="blockquote">
-                {children}
-              </blockquote>
+              <blockquote className="blockquote">{children}</blockquote>
             ),
             table: ({ children }: any) => (
               <div className="table-container">
-                <table className="formatted-table">
-                  {children}
-                </table>
+                <table className="formatted-table">{children}</table>
               </div>
             ),
             ul: ({ children }: any) => (
-              <ul className="formatted-list">
-                {children}
-              </ul>
+              <ul className="formatted-list">{children}</ul>
             ),
             ol: ({ children }: any) => (
-              <ol className="formatted-list">
-                {children}
-              </ol>
+              <ol className="formatted-list">{children}</ol>
             )
           }}
         >

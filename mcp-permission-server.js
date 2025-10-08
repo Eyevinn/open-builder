@@ -2,16 +2,18 @@
 
 /**
  * MCP Permission Server
- * 
+ *
  * This MCP server provides permission prompt tools that Claude can use
  * to request permissions from the user through the web application.
  */
 
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
-const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
+const {
+  StdioServerTransport
+} = require('@modelcontextprotocol/sdk/server/stdio.js');
 const {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
+  ListToolsRequestSchema
 } = require('@modelcontextprotocol/sdk/types.js');
 // Import fetch function - handle different environments
 let fetch;
@@ -36,12 +38,14 @@ async function initializeFetch() {
 }
 
 // Initialize fetch before starting server
-initializeFetch().then(() => {
-  console.error('🔐 Fetch function initialized successfully');
-}).catch(err => {
-  console.error('🔐 Failed to initialize fetch:', err);
-  process.exit(1);
-});
+initializeFetch()
+  .then(() => {
+    console.error('🔐 Fetch function initialized successfully');
+  })
+  .catch((err) => {
+    console.error('🔐 Failed to initialize fetch:', err);
+    process.exit(1);
+  });
 
 // Configuration
 const WEB_APP_BASE_URL = `http://localhost:${process.env.PORT}`;
@@ -51,12 +55,12 @@ class PermissionMCPServer {
     this.server = new Server(
       {
         name: 'permission-prompt-server',
-        version: '1.0.0',
+        version: '1.0.0'
       },
       {
         capabilities: {
-          tools: {},
-        },
+          tools: {}
+        }
       }
     );
 
@@ -72,39 +76,46 @@ class PermissionMCPServer {
         tools: [
           {
             name: 'permission_prompt',
-            description: 'Request permission from the user to perform an action',
+            description:
+              'Request permission from the user to perform an action',
             inputSchema: {
               type: 'object',
               properties: {
                 action: {
                   type: 'string',
-                  description: 'The action requiring permission (e.g., file_write, command_execute)',
+                  description:
+                    'The action requiring permission (e.g., file_write, command_execute)'
                 },
                 description: {
                   type: 'string',
-                  description: 'Human-readable description of what will be done',
+                  description: 'Human-readable description of what will be done'
                 },
                 resource: {
                   type: 'string',
-                  description: 'The resource being accessed (file path, command, etc.)',
-                  optional: true,
+                  description:
+                    'The resource being accessed (file path, command, etc.)',
+                  optional: true
                 },
                 details: {
                   type: 'object',
-                  description: 'Additional details about the permission request',
-                  optional: true,
-                },
+                  description:
+                    'Additional details about the permission request',
+                  optional: true
+                }
               },
-              required: ['action', 'description'],
-            },
-          },
-        ],
+              required: ['action', 'description']
+            }
+          }
+        ]
       };
     });
 
     // Handle tool calls
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      console.error('🔐 MCP Tool call received:', JSON.stringify(request.params, null, 2));
+      console.error(
+        '🔐 MCP Tool call received:',
+        JSON.stringify(request.params, null, 2)
+      );
       const { name, arguments: args } = request.params;
 
       if (name === 'permission_prompt') {
@@ -120,12 +131,15 @@ class PermissionMCPServer {
   async handlePermissionRequest(args) {
     // Handle different argument structures from Claude Agent SDK
     let action, description, resource, details;
-    
+
     if (args.tool_name && args.input) {
       // New format from Claude Agent SDK
       action = `${args.tool_name}`;
       description = `Request to use ${args.tool_name} tool`;
-      resource = args.input.file_path || args.input.command || JSON.stringify(args.input);
+      resource =
+        args.input.file_path ||
+        args.input.command ||
+        JSON.stringify(args.input);
       details = args.input;
     } else {
       // Direct format
@@ -144,24 +158,29 @@ class PermissionMCPServer {
         description,
         resource,
         details,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       };
 
-      console.error(`🔐 Sending permission request to web app: ${WEB_APP_BASE_URL}/api/permissions/request-mcp`);
+      console.error(
+        `🔐 Sending permission request to web app: ${WEB_APP_BASE_URL}/api/permissions/request-mcp`
+      );
 
       // Send permission request to web application
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 65000); // 65 second timeout
-      
-      const response = await fetch(`${WEB_APP_BASE_URL}/api/permissions/request-mcp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(permissionRequest),
-        signal: controller.signal,
-      });
-      
+
+      const response = await fetch(
+        `${WEB_APP_BASE_URL}/api/permissions/request-mcp`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(permissionRequest),
+          signal: controller.signal
+        }
+      );
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
@@ -170,24 +189,33 @@ class PermissionMCPServer {
       }
 
       const result = await response.json();
-      
-      console.error(`🔐 MCP Response received:`, JSON.stringify(result, null, 2));
-      
+
+      console.error(
+        `🔐 MCP Response received:`,
+        JSON.stringify(result, null, 2)
+      );
+
       // Validate the response structure
       if (!result || typeof result !== 'object') {
-        throw new Error(`Invalid response format: expected object, got ${typeof result}`);
+        throw new Error(
+          `Invalid response format: expected object, got ${typeof result}`
+        );
       }
-      
+
       if (typeof result.approved !== 'boolean') {
-        throw new Error(`Invalid response: 'approved' field must be boolean, got ${typeof result.approved}`);
+        throw new Error(
+          `Invalid response: 'approved' field must be boolean, got ${typeof result.approved}`
+        );
       }
-      
-      console.error(`🔐 Permission ${result.approved ? 'approved' : 'denied'}: ${result.reason || 'No reason provided'}`);
+
+      console.error(
+        `🔐 Permission ${result.approved ? 'approved' : 'denied'}: ${result.reason || 'No reason provided'}`
+      );
 
       // Return Claude Agent SDK compatible response format
       const permissionResponse = {
         behavior: result.approved ? 'allow' : 'deny',
-        message: result.approved 
+        message: result.approved
           ? `Permission approved: ${description}. You may proceed with the action.`
           : `Permission denied: ${description}. Reason: ${result.reason || 'User denied the request'}`
       };
@@ -195,29 +223,35 @@ class PermissionMCPServer {
       // For approved permissions, we can optionally include updatedInput if we want to modify the input
       if (result.approved && details && details.file_path) {
         // Override SDK permission suggestions: redirect /tmp paths to workspace directory
-        const workspaceDir = process.env.WEB_APP_BASE_URL ? 
-          process.env.CLAUDE_WORKSPACE_DIR || './usercontent' : './usercontent';
-        
+        const workspaceDir = process.env.WEB_APP_BASE_URL
+          ? process.env.CLAUDE_WORKSPACE_DIR || './usercontent'
+          : './usercontent';
+
         let modifiedFilePath = details.file_path;
-        
+
         // Check if the file path is in /tmp and redirect it to workspace
-        if (details.file_path.startsWith('/tmp/') || details.file_path.startsWith('/tmp\\')) {
+        if (
+          details.file_path.startsWith('/tmp/') ||
+          details.file_path.startsWith('/tmp\\')
+        ) {
           // Extract the filename from the /tmp path
           const fileName = details.file_path.replace(/^\/tmp[\/\\]?/, '');
-          
+
           // Create new path in workspace directory
           if (fileName) {
             // If workspaceDir is relative, resolve it relative to the server process
             const path = require('path');
-            const absoluteWorkspaceDir = path.isAbsolute(workspaceDir) ? 
-              workspaceDir : 
-              path.resolve(process.cwd(), workspaceDir);
-            
+            const absoluteWorkspaceDir = path.isAbsolute(workspaceDir)
+              ? workspaceDir
+              : path.resolve(process.cwd(), workspaceDir);
+
             modifiedFilePath = path.join(absoluteWorkspaceDir, fileName);
-            console.error(`🔐 Redirecting file path from ${details.file_path} to ${modifiedFilePath}`);
+            console.error(
+              `🔐 Redirecting file path from ${details.file_path} to ${modifiedFilePath}`
+            );
           }
         }
-        
+
         // Include the modified input
         permissionResponse.updatedInput = {
           ...details,
@@ -225,15 +259,18 @@ class PermissionMCPServer {
         };
       }
 
-      console.error(`🔐 Returning permission response:`, JSON.stringify(permissionResponse, null, 2));
+      console.error(
+        `🔐 Returning permission response:`,
+        JSON.stringify(permissionResponse, null, 2)
+      );
 
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(permissionResponse),
-          },
-        ],
+            text: JSON.stringify(permissionResponse)
+          }
+        ]
       };
     } catch (error) {
       console.error(`🔐 Permission request error:`, error);
@@ -242,7 +279,7 @@ class PermissionMCPServer {
         stack: error.stack,
         name: error.name
       });
-      
+
       // Return Claude Agent SDK compatible error response format
       const errorPermissionResponse = {
         behavior: 'deny',
@@ -253,12 +290,15 @@ class PermissionMCPServer {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(errorPermissionResponse),
-          },
-        ],
+            text: JSON.stringify(errorPermissionResponse)
+          }
+        ]
       };
-      
-      console.error(`🔐 Returning error response:`, JSON.stringify(errorResponse, null, 2));
+
+      console.error(
+        `🔐 Returning error response:`,
+        JSON.stringify(errorResponse, null, 2)
+      );
       return errorResponse;
     }
   }

@@ -64,8 +64,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .status-text {
@@ -223,24 +228,24 @@
     align-items: flex-start;
     gap: 4px;
   }
-  
+
   .label {
     min-width: auto;
     margin-right: 0;
   }
-  
+
   .value {
     text-align: left;
   }
-  
+
   .file-list {
     align-items: flex-start;
   }
-  
+
   .actions {
     justify-content: stretch;
   }
-  
+
   .refresh-button,
   .retry-button {
     flex: 1;

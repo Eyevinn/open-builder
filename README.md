@@ -19,12 +19,14 @@ A web-based interface for Claude Code that provides a user-friendly way to inter
 ### Using Docker (Recommended)
 
 1. **Set up environment variables:**
+
    ```bash
    cp .env.example .env
    # Edit .env and add your ANTHROPIC_API_KEY
    ```
 
 2. **Run with Docker Compose:**
+
    ```bash
    # Production deployment
    docker-compose up -d
@@ -47,6 +49,7 @@ A web-based interface for Claude Code that provides a user-friendly way to inter
 ### Setup
 
 1. **Clone and install dependencies:**
+
    ```bash
    git clone <repository-url>
    cd open-builder
@@ -55,12 +58,14 @@ A web-based interface for Claude Code that provides a user-friendly way to inter
    ```
 
 2. **Configure environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env and add your ANTHROPIC_API_KEY
    ```
 
 3. **Start development servers:**
+
    ```bash
    # Backend (from root directory)
    npm start
@@ -110,13 +115,13 @@ docker-compose down
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | - | Your Anthropic API key |
-| `PORT` | No | 3001 | Server port |
-| `CLAUDE_WORKSPACE_DIR` | No | `./usercontent` | Directory for file operations |
-| `OSC_ACCESS_TOKEN` | No | - | Optional OSaaS access token |
-| `DEBUG` | No | 0 | Enable debug logging (1) |
+| Variable               | Required | Default         | Description                   |
+| ---------------------- | -------- | --------------- | ----------------------------- |
+| `ANTHROPIC_API_KEY`    | Yes      | -               | Your Anthropic API key        |
+| `PORT`                 | No       | 3001            | Server port                   |
+| `CLAUDE_WORKSPACE_DIR` | No       | `./usercontent` | Directory for file operations |
+| `OSC_ACCESS_TOKEN`     | No       | -               | Optional OSaaS access token   |
+| `DEBUG`                | No       | 0               | Enable debug logging (1)      |
 
 ### Data Persistence
 
@@ -197,11 +202,13 @@ The server provides the following endpoints:
 Claude operates within a configurable workspace directory for file operations:
 
 ### Default Configuration
+
 - **Default Path**: `./usercontent` (relative to project root)
 - **Auto-Creation**: Directory is created automatically on server startup
 - **Welcome File**: A `README.md` is created if the directory is empty
 
 ### Customizing Workspace
+
 Set the `CLAUDE_WORKSPACE_DIR` environment variable:
 
 ```bash
@@ -216,12 +223,14 @@ CLAUDE_WORKSPACE_DIR=/tmp/claude-work
 ```
 
 ### Workspace Features
+
 - **Sandboxed Operations**: All Claude file operations are limited to this directory
 - **Persistent Storage**: Files remain between sessions
 - **Security**: Claude cannot access files outside this directory
 - **Automatic Setup**: Directory structure is initialized automatically
 
 ### Use Cases
+
 - **Project Development**: Place project files for Claude to analyze/modify
 - **Data Analysis**: Store CSV, JSON files for Claude to process
 - **Code Generation**: Let Claude create and modify code files
@@ -237,16 +246,19 @@ CLAUDE_WORKSPACE_DIR=/tmp/claude-work
 ## 🚨 Troubleshooting
 
 ### Server won't start
+
 - **Check API Key**: Ensure `ANTHROPIC_API_KEY` is set in `.env`
 - **Port in Use**: Make sure port 3001 (or your chosen port) isn't already in use
 - **Node Version**: Verify Node.js version is 16.0 or higher
 
 ### Frontend shows connection error
+
 - **Server Running**: Ensure the server started successfully
 - **API Key**: Check server logs for API key configuration warnings
 - **Network**: Verify no firewall blocking local connections
 
 ### Chat not working
+
 - **API Key Valid**: Verify your Anthropic API key is correct and active
 - **Credits**: Ensure you have sufficient credits in your Anthropic account
 - **Server Logs**: Check the server console for detailed error messages
@@ -254,6 +266,7 @@ CLAUDE_WORKSPACE_DIR=/tmp/claude-work
 ## 🔧 Development
 
 ### Frontend Development
+
 ```bash
 cd frontend
 npm start
@@ -262,6 +275,7 @@ npm start
 This starts the frontend in development mode (separate from the main server).
 
 ### Server Development
+
 ```bash
 npm run dev
 ```
@@ -270,11 +284,11 @@ The server will serve the built frontend and provide API endpoints.
 
 ## 🌐 Environment Variables
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `PORT` | Server port | No | 3001 |
-| `ANTHROPIC_API_KEY` | Your Anthropic API key | Yes | - |
-| `CLAUDE_WORKSPACE_DIR` | Directory for Claude file operations | No | `./usercontent` |
+| Variable               | Description                          | Required | Default         |
+| ---------------------- | ------------------------------------ | -------- | --------------- |
+| `PORT`                 | Server port                          | No       | 3001            |
+| `ANTHROPIC_API_KEY`    | Your Anthropic API key               | Yes      | -               |
+| `CLAUDE_WORKSPACE_DIR` | Directory for Claude file operations | No       | `./usercontent` |
 
 ## 🤝 Contributing
 

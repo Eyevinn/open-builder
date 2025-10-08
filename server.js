@@ -26,11 +26,20 @@ const PORT = process.env.PORT || 3001;
 const WORKSPACE_DIR = process.env.CLAUDE_WORKSPACE_DIR || './usercontent';
 
 // Check for required environment variables
-if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your_api_key_here') {
-  console.warn('WARNING: ANTHROPIC_API_KEY environment variable is not properly configured');
-  console.warn('Please set your Anthropic API key in the .env file or as an environment variable');
+if (
+  !process.env.ANTHROPIC_API_KEY ||
+  process.env.ANTHROPIC_API_KEY === 'your_api_key_here'
+) {
+  console.warn(
+    'WARNING: ANTHROPIC_API_KEY environment variable is not properly configured'
+  );
+  console.warn(
+    'Please set your Anthropic API key in the .env file or as an environment variable'
+  );
   console.warn('Example: ANTHROPIC_API_KEY=sk-ant-...');
-  console.warn('The application will still start but Claude integration will not work until this is fixed.');
+  console.warn(
+    'The application will still start but Claude integration will not work until this is fixed.'
+  );
 }
 
 // Initialize workspace directory
@@ -38,10 +47,10 @@ async function initializeWorkspace() {
   try {
     // Convert to absolute path
     const absoluteWorkspaceDir = path.resolve(WORKSPACE_DIR);
-    
+
     // Ensure workspace directory exists
     await fs.ensureDir(absoluteWorkspaceDir);
-    
+
     // Create a welcome file if directory is empty
     const files = await fs.readdir(absoluteWorkspaceDir);
     if (files.length === 0) {
@@ -62,10 +71,10 @@ Created: ${new Date().toISOString()}
       await fs.writeFile(welcomeFile, welcomeContent);
       console.log(`Created welcome file: ${welcomeFile}`);
     }
-    
+
     console.log(`Claude workspace initialized: ${absoluteWorkspaceDir}`);
     console.log(`Workspace contains ${files.length} files`);
-    
+
     return absoluteWorkspaceDir;
   } catch (error) {
     console.error('Error initializing workspace:', error);
@@ -75,42 +84,46 @@ Created: ${new Date().toISOString()}
 
 // Initialize workspace on startup
 let workspaceDir;
-initializeWorkspace().then(dir => {
-  workspaceDir = dir;
-  
-  // Set Claude Agent SDK configuration globally
-  process.env.CLAUDE_AUTO_APPROVE_PERMISSIONS = 'true';
-  process.env.CLAUDE_PERMISSION_MODE = 'auto';
-}).catch(error => {
-  console.error('Failed to initialize workspace:', error);
-  process.exit(1);
-});
+initializeWorkspace()
+  .then((dir) => {
+    workspaceDir = dir;
+
+    // Set Claude Agent SDK configuration globally
+    process.env.CLAUDE_AUTO_APPROVE_PERMISSIONS = 'true';
+    process.env.CLAUDE_PERMISSION_MODE = 'auto';
+  })
+  .catch((error) => {
+    console.error('Failed to initialize workspace:', error);
+    process.exit(1);
+  });
 
 // Middleware
 app.use(cors());
 
-app.use(express.json({
-  limit: '50mb'
-}));
+app.use(
+  express.json({
+    limit: '50mb'
+  })
+);
 
 // Serve static files from the React app build directory
 app.use(express.static(path.join(__dirname, 'frontend/build')));
 
 const MCP_SERVERS = {
-  "permission-prompt": {
-    command: "node",
+  'permission-prompt': {
+    command: 'node',
     args: [path.join(__dirname, 'mcp-permission-server.js')],
     env: {
       ...process.env,
       WEB_APP_BASE_URL: `http://localhost:${PORT}`
     }
-  },
+  }
 };
-
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
-  const hasValidApiKey = process.env.ANTHROPIC_API_KEY && 
+  const hasValidApiKey =
+    process.env.ANTHROPIC_API_KEY &&
     process.env.ANTHROPIC_API_KEY !== 'your_api_key_here' &&
     process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-');
 
@@ -136,9 +149,9 @@ app.get('/health', async (req, res) => {
   } catch (error) {
     workspaceInfo.error = error.message;
   }
-    
-  res.json({ 
-    status: 'OK', 
+
+  res.json({
+    status: 'OK',
     message: 'Claude Code Web Application is running',
     hasApiKey: hasValidApiKey,
     apiKeyStatus: hasValidApiKey ? 'configured' : 'not configured',
@@ -155,14 +168,13 @@ app.post('/api/chat/stream', async (req, res) => {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-
     // Set headers for Server-Sent Events
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type'
     });
 
     // Send initial connection message
@@ -171,22 +183,22 @@ app.post('/api/chat/stream', async (req, res) => {
     // Set environment for Claude Agent SDK workspace
     const originalEnv = process.env.CLAUDE_WORKSPACE_DIR;
     const originalCwd = process.cwd();
-    const isDebugMode = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
+    const isDebugMode =
+      process.env.DEBUG === '1' || process.env.DEBUG === 'true';
 
     try {
-      
       try {
         // Set the workspace directory for Claude Agent SDK
         process.env.CLAUDE_WORKSPACE_DIR = workspaceDir;
-        
+
         // Change working directory to workspace for the SDK call
         if (workspaceDir && workspaceDir !== process.cwd()) {
           process.chdir(workspaceDir);
         }
-        
+
         let messageCount = 0;
         let currentSessionId = null;
-        
+
         const options = {
           cwd: workspaceDir || process.cwd(),
           mcpServers: MCP_SERVERS,
@@ -209,125 +221,165 @@ app.post('/api/chat/stream', async (req, res) => {
             options
           });
         }
-        
-        for await (const message of query({ 
+
+        for await (const message of query({
           prompt,
           options
         })) {
-        messageCount++;
-        
-        if (isDebugMode) {
-          console.log(`📦 Claude SDK Message #${messageCount}:`, {
-            type: typeof message,
-            messageType: message?.type,
-            hasContent: !!message?.content,
-            hasMessage: !!message?.message,
-            hasResult: !!message?.result,
-            keys: message && typeof message === 'object' ? Object.keys(message) : [],
-            preview: typeof message === 'string' 
-              ? message.substring(0, 100) + '...'
-              : JSON.stringify(message).substring(0, 200) + '...'
-          });
-        }
-        
-        
-        // Check for Claude SDK session init messages
-        if (message && typeof message === 'object' && message.type === 'system' && message.subtype === 'init' && message.session_id) {
-          currentSessionId = message.session_id;
-          if (isDebugMode) {
-            console.log('🆔 Claude SDK session initialized with ID:', currentSessionId);
-          }
-        }
-        
-        // Handle different message formats from the Claude Agent SDK
-        let content = '';
-        let shouldSend = false;
-        
-        if (typeof message === 'string') {
-          if (isDebugMode) console.log('📝 Processing string message:', message.substring(0, 100) + '...');
-          content = message;
-          shouldSend = true;
-        } else if (message && typeof message === 'object') {
-          // Handle structured Claude Agent SDK responses
-          if (message.type === 'assistant' && message.message) {
-            if (isDebugMode) {
-              console.log('🤖 Assistant message detected:', {
-                hasContent: !!message.message.content,
-                contentType: Array.isArray(message.message.content) ? 'array' : typeof message.message.content,
-                contentLength: message.message.content?.length
-              });
-            }
-            // Extract content from assistant messages
-            if (message.message.content && Array.isArray(message.message.content)) {
-              const textItems = message.message.content.filter(item => item.type === 'text');
-              if (isDebugMode) console.log('🔤 Text items found:', textItems.length);
-              content = textItems.map(item => item.text).join('\n');
-              shouldSend = content.length > 0;
-              if (isDebugMode) console.log('📄 Extracted content length:', content.length);
-            }
-          } else if (message.type === 'result' && message.result) {
-            if (isDebugMode) console.log('🏁 Result message detected, skipping (redundant)');
-            // Handle final result messages - skip as this is redundant with assistant messages
-            content = '';
-            shouldSend = false;
-          } else if (message.content) {
-            if (isDebugMode) console.log('📄 Direct content property found');
-            content = message.content;
-            shouldSend = true;
-          } else if (message.text) {
-            if (isDebugMode) console.log('📄 Direct text property found');
-            content = message.text;
-            shouldSend = true;
-          } else {
-            if (isDebugMode) console.log('❓ Unknown message format, skipping');
-          }
-        }
-        
-        if (isDebugMode) {
-          console.log('🚦 Send decision:', { shouldSend, contentLength: content?.length, trimmedLength: content?.trim()?.length });
-        }
-        
-        // Only send non-empty content
-        if (shouldSend && content && content.trim().length > 0) {
-          if (isDebugMode) console.log('📤 Sending content to client:', content.substring(0, 100) + '...');
-          const eventData = {
-            type: 'message',
-            content: content,
-            messageId: messageCount
-          };
-          
-          res.write(`data: ${JSON.stringify(eventData)}\n\n`);
-        } else {
-          if (isDebugMode) console.log('⏭️  Skipping message (empty or shouldSend=false)');
-        }
-      }
+          messageCount++;
 
-      console.log(`✅ Claude SDK query completed. Total messages processed: ${messageCount}`);
-      
-      
-      // Send completion message with session_id
-      const completionData = {
-        type: 'complete',
-        message: 'Stream complete'
-      };
-      
-      if (currentSessionId) {
-        completionData.sessionId = currentSessionId;
-        if (isDebugMode) {
-          console.log('📤 Sending session_id to frontend:', currentSessionId);
+          if (isDebugMode) {
+            console.log(`📦 Claude SDK Message #${messageCount}:`, {
+              type: typeof message,
+              messageType: message?.type,
+              hasContent: !!message?.content,
+              hasMessage: !!message?.message,
+              hasResult: !!message?.result,
+              keys:
+                message && typeof message === 'object'
+                  ? Object.keys(message)
+                  : [],
+              preview:
+                typeof message === 'string'
+                  ? message.substring(0, 100) + '...'
+                  : JSON.stringify(message).substring(0, 200) + '...'
+            });
+          }
+
+          // Check for Claude SDK session init messages
+          if (
+            message &&
+            typeof message === 'object' &&
+            message.type === 'system' &&
+            message.subtype === 'init' &&
+            message.session_id
+          ) {
+            currentSessionId = message.session_id;
+            if (isDebugMode) {
+              console.log(
+                '🆔 Claude SDK session initialized with ID:',
+                currentSessionId
+              );
+            }
+          }
+
+          // Handle different message formats from the Claude Agent SDK
+          let content = '';
+          let shouldSend = false;
+
+          if (typeof message === 'string') {
+            if (isDebugMode)
+              console.log(
+                '📝 Processing string message:',
+                message.substring(0, 100) + '...'
+              );
+            content = message;
+            shouldSend = true;
+          } else if (message && typeof message === 'object') {
+            // Handle structured Claude Agent SDK responses
+            if (message.type === 'assistant' && message.message) {
+              if (isDebugMode) {
+                console.log('🤖 Assistant message detected:', {
+                  hasContent: !!message.message.content,
+                  contentType: Array.isArray(message.message.content)
+                    ? 'array'
+                    : typeof message.message.content,
+                  contentLength: message.message.content?.length
+                });
+              }
+              // Extract content from assistant messages
+              if (
+                message.message.content &&
+                Array.isArray(message.message.content)
+              ) {
+                const textItems = message.message.content.filter(
+                  (item) => item.type === 'text'
+                );
+                if (isDebugMode)
+                  console.log('🔤 Text items found:', textItems.length);
+                content = textItems.map((item) => item.text).join('\n');
+                shouldSend = content.length > 0;
+                if (isDebugMode)
+                  console.log('📄 Extracted content length:', content.length);
+              }
+            } else if (message.type === 'result' && message.result) {
+              if (isDebugMode)
+                console.log('🏁 Result message detected, skipping (redundant)');
+              // Handle final result messages - skip as this is redundant with assistant messages
+              content = '';
+              shouldSend = false;
+            } else if (message.content) {
+              if (isDebugMode) console.log('📄 Direct content property found');
+              content = message.content;
+              shouldSend = true;
+            } else if (message.text) {
+              if (isDebugMode) console.log('📄 Direct text property found');
+              content = message.text;
+              shouldSend = true;
+            } else {
+              if (isDebugMode)
+                console.log('❓ Unknown message format, skipping');
+            }
+          }
+
+          if (isDebugMode) {
+            console.log('🚦 Send decision:', {
+              shouldSend,
+              contentLength: content?.length,
+              trimmedLength: content?.trim()?.length
+            });
+          }
+
+          // Only send non-empty content
+          if (shouldSend && content && content.trim().length > 0) {
+            if (isDebugMode)
+              console.log(
+                '📤 Sending content to client:',
+                content.substring(0, 100) + '...'
+              );
+            const eventData = {
+              type: 'message',
+              content: content,
+              messageId: messageCount
+            };
+
+            res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+          } else {
+            if (isDebugMode)
+              console.log('⏭️  Skipping message (empty or shouldSend=false)');
+          }
         }
-      }
-      
-      res.write(`data: ${JSON.stringify(completionData)}\n\n`);
-      res.end();
-      
+
+        console.log(
+          `✅ Claude SDK query completed. Total messages processed: ${messageCount}`
+        );
+
+        // Send completion message with session_id
+        const completionData = {
+          type: 'complete',
+          message: 'Stream complete'
+        };
+
+        if (currentSessionId) {
+          completionData.sessionId = currentSessionId;
+          if (isDebugMode) {
+            console.log('📤 Sending session_id to frontend:', currentSessionId);
+          }
+        }
+
+        res.write(`data: ${JSON.stringify(completionData)}\n\n`);
+        res.end();
       } finally {
-        if (isDebugMode) console.log('🧹 Cleaning up: restoring environment and working directory');
+        if (isDebugMode)
+          console.log(
+            '🧹 Cleaning up: restoring environment and working directory'
+          );
         // Restore original environment and working directory
         process.env.CLAUDE_WORKSPACE_DIR = originalEnv;
         if (process.cwd() !== originalCwd) {
           process.chdir(originalCwd);
-          if (isDebugMode) console.log('📁 Working directory restored to:', originalCwd);
+          if (isDebugMode)
+            console.log('📁 Working directory restored to:', originalCwd);
         }
       }
     } catch (error) {
@@ -339,7 +391,7 @@ app.post('/api/chat/stream', async (req, res) => {
       };
       res.write(`data: ${JSON.stringify(errorData)}\n\n`);
       res.end();
-      
+
       // Also restore environment in error case
       if (typeof originalEnv !== 'undefined') {
         process.env.CLAUDE_WORKSPACE_DIR = originalEnv;
@@ -351,9 +403,9 @@ app.post('/api/chat/stream', async (req, res) => {
   } catch (error) {
     console.error('Error in chat stream endpoint:', error);
     if (!res.headersSent) {
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Internal server error',
-        message: error.message 
+        message: error.message
       });
     }
   }
@@ -368,22 +420,21 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-
     let fullResponse = '';
     let currentSessionId = null;
     // Set environment for Claude Agent SDK workspace
     const originalEnv = process.env.CLAUDE_WORKSPACE_DIR;
     const originalCwd = process.cwd();
-    
+
     try {
       // Set the workspace directory for Claude Agent SDK
       process.env.CLAUDE_WORKSPACE_DIR = workspaceDir;
-      
+
       // Change working directory to workspace for the SDK call
       if (workspaceDir && workspaceDir !== process.cwd()) {
         process.chdir(workspaceDir);
       }
-      
+
       const options = {
         cwd: workspaceDir || process.cwd(),
         permissionPromptToolName: 'mcp__permission-prompt__permission_prompt',
@@ -402,17 +453,25 @@ app.post('/api/chat', async (req, res) => {
         prompt: prompt.substring(0, 50) + '...',
         options
       });
-      for await (const message of query({ 
+      for await (const message of query({
         prompt,
         options
       })) {
-        
         // Check for Claude SDK session init messages
-        if (message && typeof message === 'object' && message.type === 'system' && message.subtype === 'init' && message.session_id) {
+        if (
+          message &&
+          typeof message === 'object' &&
+          message.type === 'system' &&
+          message.subtype === 'init' &&
+          message.session_id
+        ) {
           currentSessionId = message.session_id;
-          console.log('🆔 Claude SDK session initialized with ID:', currentSessionId);
+          console.log(
+            '🆔 Claude SDK session initialized with ID:',
+            currentSessionId
+          );
         }
-        
+
         // Handle different message formats from the Claude Agent SDK
         if (typeof message === 'string') {
           fullResponse += message;
@@ -420,10 +479,13 @@ app.post('/api/chat', async (req, res) => {
           // Handle structured Claude Agent SDK responses
           if (message.type === 'assistant' && message.message) {
             // Extract content from assistant messages
-            if (message.message.content && Array.isArray(message.message.content)) {
+            if (
+              message.message.content &&
+              Array.isArray(message.message.content)
+            ) {
               const textContent = message.message.content
-                .filter(item => item.type === 'text')
-                .map(item => item.text)
+                .filter((item) => item.type === 'text')
+                .map((item) => item.text)
                 .join('\n');
               if (textContent && textContent.trim().length > 0) {
                 fullResponse += textContent;
@@ -440,7 +502,6 @@ app.post('/api/chat', async (req, res) => {
           // Skip system and intermediate messages, don't accumulate raw JSON
         }
       }
-    
     } finally {
       // Restore original environment and working directory
       process.env.CLAUDE_WORKSPACE_DIR = originalEnv;
@@ -449,20 +510,20 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    const responseData = { 
+    const responseData = {
       response: fullResponse,
       timestamp: new Date().toISOString()
     };
-    
+
     if (currentSessionId) {
       responseData.sessionId = currentSessionId;
       console.log('📤 Sending session_id to frontend:', currentSessionId);
     }
-    
+
     res.json(responseData);
   } catch (error) {
     console.error('Error in chat endpoint:', error);
-    
+
     // Also restore environment in error case
     if (typeof originalEnv !== 'undefined') {
       process.env.CLAUDE_WORKSPACE_DIR = originalEnv;
@@ -470,17 +531,17 @@ app.post('/api/chat', async (req, res) => {
     if (typeof originalCwd !== 'undefined' && process.cwd() !== originalCwd) {
       process.chdir(originalCwd);
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: 'Internal server error',
-      message: error.message 
+      message: error.message
     });
   }
 });
 
 // Check connection endpoint
 app.get('/api/status', (req, res) => {
-  res.json({ 
+  res.json({
     connected: true,
     message: 'Server is ready',
     timestamp: new Date().toISOString()
@@ -510,15 +571,15 @@ app.post('/api/permissions/respond', (req, res) => {
     const { permissionId, approved, reason } = req.body;
 
     if (!permissionId || typeof approved !== 'boolean') {
-      return res.status(400).json({ 
-        error: 'Permission ID and approved status are required' 
+      return res.status(400).json({
+        error: 'Permission ID and approved status are required'
       });
     }
 
     const permission = pendingPermissions.get(permissionId);
     if (!permission) {
-      return res.status(404).json({ 
-        error: 'Permission request not found or already processed' 
+      return res.status(404).json({
+        error: 'Permission request not found or already processed'
       });
     }
 
@@ -536,7 +597,6 @@ app.post('/api/permissions/respond', (req, res) => {
       permissionId,
       approved
     });
-
   } catch (error) {
     console.error('Error responding to permission:', error);
     res.status(500).json({
@@ -557,22 +617,28 @@ function generateClientId() {
 wss.on('connection', (ws, req) => {
   const clientId = generateClientId();
   console.log(`🔗 WebSocket client connected: ${clientId}`);
-  
+
   // Store client with unique ID to prevent mixing
   permissionClients.set(clientId, ws);
-  console.log(`🔗 Added client to permission stream. Total clients: ${permissionClients.size}`);
+  console.log(
+    `🔗 Added client to permission stream. Total clients: ${permissionClients.size}`
+  );
 
   // Send initial connection message
-  ws.send(JSON.stringify({ 
-    type: 'connected', 
-    message: 'Permission WebSocket connected',
-    clientId: clientId 
-  }));
+  ws.send(
+    JSON.stringify({
+      type: 'connected',
+      message: 'Permission WebSocket connected',
+      clientId: clientId
+    })
+  );
 
   // Send current pending permissions
   const pending = Array.from(pendingPermissions.values());
   if (pending.length > 0) {
-    ws.send(JSON.stringify({ type: 'pending-permissions', permissions: pending }));
+    ws.send(
+      JSON.stringify({ type: 'pending-permissions', permissions: pending })
+    );
   }
 
   // Permission event handlers for this specific client
@@ -599,16 +665,24 @@ wss.on('connection', (ws, req) => {
       console.log(`📨 Received WebSocket message from ${clientId}:`, data);
       // Handle client messages if needed
     } catch (error) {
-      console.error(`❌ Error parsing WebSocket message from ${clientId}:`, error);
+      console.error(
+        `❌ Error parsing WebSocket message from ${clientId}:`,
+        error
+      );
     }
   });
 
   // Clean up when client disconnects
   ws.on('close', () => {
     permissionClients.delete(clientId);
-    console.log(`🔗 WebSocket client disconnected: ${clientId}. Total clients: ${permissionClients.size}`);
+    console.log(
+      `🔗 WebSocket client disconnected: ${clientId}. Total clients: ${permissionClients.size}`
+    );
     permissionEmitter.removeListener('permission-request', onPermissionRequest);
-    permissionEmitter.removeListener('permission-response', onPermissionResponse);
+    permissionEmitter.removeListener(
+      'permission-response',
+      onPermissionResponse
+    );
   });
 
   // Handle WebSocket errors
@@ -616,7 +690,10 @@ wss.on('connection', (ws, req) => {
     console.error(`❌ WebSocket error for client ${clientId}:`, error);
     permissionClients.delete(clientId);
     permissionEmitter.removeListener('permission-request', onPermissionRequest);
-    permissionEmitter.removeListener('permission-response', onPermissionResponse);
+    permissionEmitter.removeListener(
+      'permission-response',
+      onPermissionResponse
+    );
   });
 });
 
@@ -624,15 +701,17 @@ wss.on('connection', (ws, req) => {
 app.post('/api/permissions/request-mcp', async (req, res) => {
   try {
     const { action, description, resource, details } = req.body;
-    
+
     if (!action || !description) {
-      return res.status(400).json({ error: 'Action and description are required' });
+      return res
+        .status(400)
+        .json({ error: 'Action and description are required' });
     }
 
     const permissionId = `mcp_perm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     console.log(`🔐 MCP Permission requested: ${action} - ${description}`);
-    
+
     // Store the permission request
     const permissionRequest = {
       id: permissionId,
@@ -643,39 +722,55 @@ app.post('/api/permissions/request-mcp', async (req, res) => {
       timestamp: new Date().toISOString(),
       status: 'pending'
     };
-    
+
     pendingPermissions.set(permissionId, permissionRequest);
-    
-    console.log(`🔐 Broadcasting MCP permission to ${permissionClients.size} connected clients`);
-    
+
+    console.log(
+      `🔐 Broadcasting MCP permission to ${permissionClients.size} connected clients`
+    );
+
     // Emit event for real-time updates
     permissionEmitter.emit('permission-request', permissionRequest);
-    
+
     // Wait for user response with timeout
     const response = await new Promise((resolve) => {
       const timeout = setTimeout(() => {
         pendingPermissions.delete(permissionId);
         console.log(`⏰ MCP Permission ${permissionId} timed out - denying`);
-        resolve({ approved: false, reason: 'Request timed out after 60 seconds' });
+        resolve({
+          approved: false,
+          reason: 'Request timed out after 60 seconds'
+        });
       }, 60000); // 60 second timeout
-      
+
       const responseHandler = (response) => {
         if (response.id === permissionId) {
           clearTimeout(timeout);
           pendingPermissions.delete(permissionId);
-          permissionEmitter.removeListener('permission-response', responseHandler);
-          console.log(`${response.approved ? '✅' : '❌'} MCP Permission ${permissionId} ${response.approved ? 'approved' : 'denied'}`);
+          permissionEmitter.removeListener(
+            'permission-response',
+            responseHandler
+          );
+          console.log(
+            `${response.approved ? '✅' : '❌'} MCP Permission ${permissionId} ${response.approved ? 'approved' : 'denied'}`
+          );
           resolve({ approved: response.approved, reason: response.reason });
         }
       };
-      
+
       permissionEmitter.on('permission-response', responseHandler);
     });
-    
+
     res.json(response);
   } catch (error) {
     console.error('Error processing MCP permission request:', error);
-    res.status(500).json({ error: 'Internal server error', approved: false, reason: 'Server error' });
+    res
+      .status(500)
+      .json({
+        error: 'Internal server error',
+        approved: false,
+        reason: 'Server error'
+      });
   }
 });
 
@@ -685,7 +780,9 @@ app.post('/api/permissions/request', async (req, res) => {
     const { action, description, details } = req.body;
 
     if (!action || !description) {
-      return res.status(400).json({ error: 'Action and description are required' });
+      return res
+        .status(400)
+        .json({ error: 'Action and description are required' });
     }
 
     console.log(`\n🔐 PERMISSION REQUEST:`);
@@ -696,7 +793,9 @@ app.post('/api/permissions/request', async (req, res) => {
     }
     console.log(`Workspace: ${workspaceDir || process.cwd()}`);
     console.log(`Timestamp: ${new Date().toISOString()}`);
-    console.log(`\n⚠️  This action requires user approval. Automatically approving for web interface.`);
+    console.log(
+      `\n⚠️  This action requires user approval. Automatically approving for web interface.`
+    );
 
     // For the web interface, we'll auto-approve but log the request
     // In a production environment, you might want to implement actual approval flow
@@ -708,7 +807,6 @@ app.post('/api/permissions/request', async (req, res) => {
       workspace: workspaceDir || process.cwd(),
       timestamp: new Date().toISOString()
     });
-
   } catch (error) {
     console.error('Error handling permission request:', error);
     res.status(500).json({
@@ -721,9 +819,9 @@ app.post('/api/permissions/request', async (req, res) => {
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
-    message: error.message 
+    message: error.message
   });
 });
 
@@ -736,9 +834,11 @@ server.listen(PORT, () => {
   console.log(`Claude Code Web Application running on port ${PORT}`);
   console.log(`Open http://localhost:${PORT} in your browser`);
   console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Permission WebSocket: ws://localhost:${PORT}/api/permissions/ws`);
+  console.log(
+    `Permission WebSocket: ws://localhost:${PORT}/api/permissions/ws`
+  );
   console.log(`API key configured: ${!!process.env.ANTHROPIC_API_KEY}`);
-  console.log(`Workspace directory: ${workspaceDir || WORKSPACE_DIR}`);  
+  console.log(`Workspace directory: ${workspaceDir || WORKSPACE_DIR}`);
 });
 
 // Graceful shutdown handling

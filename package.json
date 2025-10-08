@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "build": "cd frontend && npm run build",
+    "pretty": "prettier --check --ignore-unknown ./",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -39,5 +40,8 @@
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
   }
 }
