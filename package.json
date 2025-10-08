@@ -31,10 +31,13 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.9",
     "@modelcontextprotocol/sdk": "^1.19.1",
+    "@osaas/client-core": "^0.18.0",
+    "@osaas/client-services": "^0.11.5",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "fs-extra": "^11.3.2",
+    "minio": "^8.0.6",
     "node-fetch": "^3.3.2",
     "ws": "^8.18.3"
   },

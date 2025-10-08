@@ -16,18 +16,14 @@ class EnvironmentManager {
 
   setWorkspace(workspaceDir) {
     process.env.CLAUDE_WORKSPACE_DIR = workspaceDir;
-    if (workspaceDir && workspaceDir !== process.cwd()) {
-      process.chdir(workspaceDir);
-    }
+    // Don't change working directory - let Claude Agent SDK handle workspace isolation
   }
 
   restore() {
     if (this.originalEnv !== null) {
       process.env.CLAUDE_WORKSPACE_DIR = this.originalEnv;
     }
-    if (this.originalCwd && process.cwd() !== this.originalCwd) {
-      process.chdir(this.originalCwd);
-    }
+    // Working directory restoration not needed since we don't change it
   }
 }
 
@@ -139,12 +135,15 @@ class MessageProcessor {
 class ConfigUtils {
   static createQueryOptions(sessionWorkspaceDir, mcpServers, sessionId, isDebugMode = false) {
     const options = {
-      cwd: sessionWorkspaceDir || process.cwd(),
       mcpServers,
       permissionPromptToolName: 'mcp__permission-prompt__permission_prompt',
-      permissionMode: 'default',
-      additionalDirectories: [sessionWorkspaceDir]
+      permissionMode: 'default'
     };
+    
+    // Only add additionalDirectories if we have a session workspace
+    if (sessionWorkspaceDir) {
+      options.additionalDirectories = [sessionWorkspaceDir];
+    }
 
     if (sessionId) {
       options.resume = sessionId;

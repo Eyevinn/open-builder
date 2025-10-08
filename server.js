@@ -58,6 +58,13 @@ const MCP_SERVERS = {
       ...process.env,
       WEB_APP_BASE_URL: `http://localhost:${PORT}`
     }
+  },
+  'deploy': {
+    command: 'node',
+    args: [path.join(__dirname, 'mcp-deploy-server.js')],
+    env: {
+      ...process.env
+    }
   }
 };
 
