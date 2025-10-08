@@ -7,6 +7,16 @@ import React, {
 } from 'react';
 import ClaudeService, { ClaudeMessage } from '../services/claudeService';
 
+interface WorkspaceInfo {
+  hasContent: boolean;
+  fileCount: number;
+  files: string[];
+  path: string;
+  sessionId: string;
+  sessionCount?: number;
+  sessions?: string[];
+}
+
 interface ClaudeContextType {
   messages: ClaudeMessage[];
   isLoading: boolean;
@@ -15,6 +25,8 @@ interface ClaudeContextType {
   clearMessages: () => void;
   connectToService: () => Promise<void>;
   sessionId: string | null;
+  downloadWorkspace: (sessionId?: string) => Promise<void>;
+  getWorkspaceInfo: (sessionId?: string) => Promise<WorkspaceInfo | null>;
 }
 
 const ClaudeContext = createContext<ClaudeContextType | undefined>(undefined);
@@ -144,6 +156,43 @@ export const ClaudeProvider: React.FC<ClaudeProviderProps> = ({ children }) => {
     setSessionId(null);
   }, []);
 
+  const downloadWorkspace = useCallback(async (targetSessionId?: string) => {
+    try {
+      const sessionToDownload = targetSessionId || sessionId || 'all';
+      const downloadUrl = `/api/workspace/download/${sessionToDownload}`;
+      
+      // Create a temporary link and click it to trigger download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = ''; // Let the server set the filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading workspace:', error);
+      throw error;
+    }
+  }, [sessionId]);
+
+  const getWorkspaceInfo = useCallback(async (targetSessionId?: string): Promise<WorkspaceInfo | null> => {
+    try {
+      const sessionToCheck = targetSessionId || sessionId || 'all';
+      const response = await fetch(`/api/workspace/info/${sessionToCheck}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error(`Failed to get workspace info: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting workspace info:', error);
+      return null;
+    }
+  }, [sessionId]);
+
   const value: ClaudeContextType = {
     messages,
     isLoading,
@@ -151,7 +200,9 @@ export const ClaudeProvider: React.FC<ClaudeProviderProps> = ({ children }) => {
     sendMessage,
     clearMessages,
     connectToService,
-    sessionId
+    sessionId,
+    downloadWorkspace,
+    getWorkspaceInfo
   };
 
   return (
