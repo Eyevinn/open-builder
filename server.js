@@ -20,6 +20,9 @@ const permissionClients = new Map(); // Store connected WebSocket clients with u
 const EventEmitter = require('events');
 const permissionEmitter = new EventEmitter();
 
+// Session-based workspace management
+const sessionWorkspaces = new Map(); // Store session ID to workspace directory mapping
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
@@ -82,11 +85,62 @@ Created: ${new Date().toISOString()}
   }
 }
 
+// Create a unique workspace directory for a new session
+async function createSessionWorkspace(baseWorkspaceDir) {
+  try {
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sessionWorkspaceDir = path.join(baseWorkspaceDir, sessionId);
+    
+    // Ensure the session workspace directory exists
+    await fs.ensureDir(sessionWorkspaceDir);
+    
+    // Create a session README file
+    const readmeFile = path.join(sessionWorkspaceDir, 'README.md');
+    const readmeContent = `# Claude Session Workspace
+
+This is a session-specific workspace directory for Claude.
+
+## Session Information
+- Session ID: ${sessionId}
+- Created: ${new Date().toISOString()}
+- Directory: ${sessionWorkspaceDir}
+
+## Usage
+- This workspace is isolated to this session
+- All files created by Claude will be stored here
+- The workspace persists until the session ends
+`;
+    await fs.writeFile(readmeFile, readmeContent);
+    
+    console.log(`Created session workspace: ${sessionWorkspaceDir}`);
+    return { sessionId, workspaceDir: sessionWorkspaceDir };
+  } catch (error) {
+    console.error('Error creating session workspace:', error);
+    throw error;
+  }
+}
+
+// Get workspace directory for a session, create if new session
+async function getSessionWorkspace(sessionId, baseWorkspaceDir) {
+  if (sessionId && sessionWorkspaces.has(sessionId)) {
+    // Existing session, return stored workspace
+    const workspaceDir = sessionWorkspaces.get(sessionId);
+    console.log(`Using existing session workspace: ${workspaceDir}`);
+    return { sessionId, workspaceDir };
+  } else {
+    // New session, create new workspace
+    const { sessionId: newSessionId, workspaceDir } = await createSessionWorkspace(baseWorkspaceDir);
+    sessionWorkspaces.set(newSessionId, workspaceDir);
+    console.log(`Created new session workspace: ${workspaceDir}`);
+    return { sessionId: newSessionId, workspaceDir };
+  }
+}
+
 // Initialize workspace on startup
-let workspaceDir;
+let baseWorkspaceDir; // Base workspace directory for all sessions
 initializeWorkspace()
   .then((dir) => {
-    workspaceDir = dir;
+    baseWorkspaceDir = dir;
 
     // Set Claude Agent SDK configuration globally
     process.env.CLAUDE_AUTO_APPROVE_PERMISSIONS = 'true';
@@ -129,12 +183,12 @@ app.get('/health', async (req, res) => {
 
   let workspaceInfo = { exists: false, path: WORKSPACE_DIR };
   try {
-    if (workspaceDir) {
-      const files = await fs.readdir(workspaceDir);
-      const stats = await fs.stat(workspaceDir);
+    if (baseWorkspaceDir) {
+      const files = await fs.readdir(baseWorkspaceDir);
+      const stats = await fs.stat(baseWorkspaceDir);
       workspaceInfo = {
         exists: true,
-        path: workspaceDir,
+        path: baseWorkspaceDir,
         configured: WORKSPACE_DIR,
         fileCount: files.length,
         files: files.slice(0, 10), // Show first 10 files
@@ -143,7 +197,8 @@ app.get('/health', async (req, res) => {
           writable: true
         },
         lastModified: stats.mtime,
-        isConfigured: workspaceDir === path.resolve(WORKSPACE_DIR)
+        isConfigured: baseWorkspaceDir === path.resolve(WORKSPACE_DIR),
+        sessionCount: sessionWorkspaces.size
       };
     }
   } catch (error) {
@@ -188,31 +243,37 @@ app.post('/api/chat/stream', async (req, res) => {
 
     try {
       try {
+        // Get or create session-specific workspace
+        const { sessionId: currentSessionId, workspaceDir: sessionWorkspaceDir } = await getSessionWorkspace(sessionId, baseWorkspaceDir);
+
         // Set the workspace directory for Claude Agent SDK
-        process.env.CLAUDE_WORKSPACE_DIR = workspaceDir;
+        process.env.CLAUDE_WORKSPACE_DIR = sessionWorkspaceDir;
 
         // Change working directory to workspace for the SDK call
-        if (workspaceDir && workspaceDir !== process.cwd()) {
-          process.chdir(workspaceDir);
+        if (sessionWorkspaceDir && sessionWorkspaceDir !== process.cwd()) {
+          process.chdir(sessionWorkspaceDir);
         }
 
         let messageCount = 0;
-        let currentSessionId = null;
+        let finalSessionId = currentSessionId; // Use the session ID from workspace creation
 
         const options = {
-          cwd: workspaceDir || process.cwd(),
+          cwd: sessionWorkspaceDir || process.cwd(),
           mcpServers: MCP_SERVERS,
           permissionPromptToolName: 'mcp__permission-prompt__permission_prompt',
           permissionMode: 'default',
-          additionalDirectories: [workspaceDir]
+          additionalDirectories: [sessionWorkspaceDir]
         };
 
-        // Add session resume option if sessionId is provided
+        // Add session resume option if sessionId is provided (existing session)
         if (sessionId) {
           options.resume = sessionId;
-          currentSessionId = sessionId;
           if (isDebugMode) {
             console.log('🔄 Resuming Claude SDK session with ID:', sessionId);
+          }
+        } else {
+          if (isDebugMode) {
+            console.log('🆕 Starting new Claude SDK session with workspace:', sessionWorkspaceDir);
           }
         }
         if (isDebugMode) {
@@ -254,12 +315,29 @@ app.post('/api/chat/stream', async (req, res) => {
             message.subtype === 'init' &&
             message.session_id
           ) {
-            currentSessionId = message.session_id;
-            if (isDebugMode) {
-              console.log(
-                '🆔 Claude SDK session initialized with ID:',
-                currentSessionId
-              );
+            const claudeSessionId = message.session_id;
+            // If this is a new session, update our session workspace mapping
+            if (!sessionId) {
+              // New session: map Claude's session ID to our workspace
+              sessionWorkspaces.set(claudeSessionId, sessionWorkspaceDir);
+              finalSessionId = claudeSessionId;
+              if (isDebugMode) {
+                console.log(
+                  '🆔 New Claude SDK session initialized with ID:',
+                  claudeSessionId,
+                  'workspace:',
+                  sessionWorkspaceDir
+                );
+              }
+            } else {
+              // Existing session: verify mapping
+              finalSessionId = claudeSessionId;
+              if (isDebugMode) {
+                console.log(
+                  '🔄 Claude SDK session resumed with ID:',
+                  claudeSessionId
+                );
+              }
             }
           }
 
@@ -360,10 +438,10 @@ app.post('/api/chat/stream', async (req, res) => {
           message: 'Stream complete'
         };
 
-        if (currentSessionId) {
-          completionData.sessionId = currentSessionId;
+        if (finalSessionId) {
+          completionData.sessionId = finalSessionId;
           if (isDebugMode) {
-            console.log('📤 Sending session_id to frontend:', currentSessionId);
+            console.log('📤 Sending session_id to frontend:', finalSessionId);
           }
         }
 
@@ -421,33 +499,38 @@ app.post('/api/chat', async (req, res) => {
     }
 
     let fullResponse = '';
-    let currentSessionId = null;
+    let finalSessionId = null;
     // Set environment for Claude Agent SDK workspace
     const originalEnv = process.env.CLAUDE_WORKSPACE_DIR;
     const originalCwd = process.cwd();
 
     try {
+      // Get or create session-specific workspace
+      const { sessionId: currentSessionId, workspaceDir: sessionWorkspaceDir } = await getSessionWorkspace(sessionId, baseWorkspaceDir);
+      finalSessionId = currentSessionId;
+
       // Set the workspace directory for Claude Agent SDK
-      process.env.CLAUDE_WORKSPACE_DIR = workspaceDir;
+      process.env.CLAUDE_WORKSPACE_DIR = sessionWorkspaceDir;
 
       // Change working directory to workspace for the SDK call
-      if (workspaceDir && workspaceDir !== process.cwd()) {
-        process.chdir(workspaceDir);
+      if (sessionWorkspaceDir && sessionWorkspaceDir !== process.cwd()) {
+        process.chdir(sessionWorkspaceDir);
       }
 
       const options = {
-        cwd: workspaceDir || process.cwd(),
+        cwd: sessionWorkspaceDir || process.cwd(),
         permissionPromptToolName: 'mcp__permission-prompt__permission_prompt',
         permissionMode: 'default',
         mcpServers: MCP_SERVERS,
-        additionalDirectories: [workspaceDir]
+        additionalDirectories: [sessionWorkspaceDir]
       };
 
-      // Add session resume option if sessionId is provided
+      // Add session resume option if sessionId is provided (existing session)
       if (sessionId) {
         options.resume = sessionId;
-        currentSessionId = sessionId;
         console.log('🔄 Resuming Claude SDK session with ID:', sessionId);
+      } else {
+        console.log('🆕 Starting new Claude SDK session with workspace:', sessionWorkspaceDir);
       }
       console.log('🔧 Query options:', {
         prompt: prompt.substring(0, 50) + '...',
@@ -465,11 +548,26 @@ app.post('/api/chat', async (req, res) => {
           message.subtype === 'init' &&
           message.session_id
         ) {
-          currentSessionId = message.session_id;
-          console.log(
-            '🆔 Claude SDK session initialized with ID:',
-            currentSessionId
-          );
+          const claudeSessionId = message.session_id;
+          // If this is a new session, update our session workspace mapping
+          if (!sessionId) {
+            // New session: map Claude's session ID to our workspace
+            sessionWorkspaces.set(claudeSessionId, sessionWorkspaceDir);
+            finalSessionId = claudeSessionId;
+            console.log(
+              '🆔 New Claude SDK session initialized with ID:',
+              claudeSessionId,
+              'workspace:',
+              sessionWorkspaceDir
+            );
+          } else {
+            // Existing session: verify mapping
+            finalSessionId = claudeSessionId;
+            console.log(
+              '🔄 Claude SDK session resumed with ID:',
+              claudeSessionId
+            );
+          }
         }
 
         // Handle different message formats from the Claude Agent SDK
@@ -515,9 +613,9 @@ app.post('/api/chat', async (req, res) => {
       timestamp: new Date().toISOString()
     };
 
-    if (currentSessionId) {
-      responseData.sessionId = currentSessionId;
-      console.log('📤 Sending session_id to frontend:', currentSessionId);
+    if (finalSessionId) {
+      responseData.sessionId = finalSessionId;
+      console.log('📤 Sending session_id to frontend:', finalSessionId);
     }
 
     res.json(responseData);
@@ -791,7 +889,7 @@ app.post('/api/permissions/request', async (req, res) => {
     if (details) {
       console.log(`Details: ${JSON.stringify(details, null, 2)}`);
     }
-    console.log(`Workspace: ${workspaceDir || process.cwd()}`);
+    console.log(`Workspace: ${baseWorkspaceDir || process.cwd()}`);
     console.log(`Timestamp: ${new Date().toISOString()}`);
     console.log(
       `\n⚠️  This action requires user approval. Automatically approving for web interface.`
@@ -804,7 +902,7 @@ app.post('/api/permissions/request', async (req, res) => {
       message: 'Permission automatically granted for web interface',
       action,
       description,
-      workspace: workspaceDir || process.cwd(),
+      workspace: baseWorkspaceDir || process.cwd(),
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -838,7 +936,7 @@ server.listen(PORT, () => {
     `Permission WebSocket: ws://localhost:${PORT}/api/permissions/ws`
   );
   console.log(`API key configured: ${!!process.env.ANTHROPIC_API_KEY}`);
-  console.log(`Workspace directory: ${workspaceDir || WORKSPACE_DIR}`);
+  console.log(`Base workspace directory: ${baseWorkspaceDir || WORKSPACE_DIR}`);
 });
 
 // Graceful shutdown handling

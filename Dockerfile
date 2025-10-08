@@ -42,8 +42,8 @@ COPY claude-code-settings.json /home/openbuilder/.claude/settings.json
 COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Create workspace directory with proper permissions
-RUN mkdir -p /usercontent && \
-    chown -R openbuilder:nodejs /usercontent && \
+RUN mkdir -p /data && \
+    chown -R openbuilder:nodejs /data && \
     chown -R openbuilder:nodejs /app
 
 RUN chown -R openbuilder:nodejs /home/openbuilder/.claude
@@ -52,7 +52,7 @@ RUN chown -R openbuilder:nodejs /home/openbuilder/.claude
 USER openbuilder
 
 ENV PORT=8080
-ENV CLAUDE_WORKSPACE_DIR=/usercontent
+ENV CLAUDE_WORKSPACE_DIR=/data
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
