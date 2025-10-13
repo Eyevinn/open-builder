@@ -33,6 +33,7 @@
     "@modelcontextprotocol/sdk": "^1.19.1",
     "@osaas/client-core": "^0.18.0",
     "@osaas/client-services": "^0.11.5",
+    "archiver": "^7.0.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",

@@ -63,11 +63,51 @@
   position: relative;
 }
 
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1a202c;
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 6px 6px 0 0;
+  font-size: 12px;
+  border-bottom: 1px solid #2d3748;
+}
+
+.code-language {
+  font-weight: 500;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.download-button {
+  background: #4a5568;
+  border: none;
+  color: #e2e8f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.download-button:hover {
+  background: #2d3748;
+}
+
+.download-button:active {
+  background: #1a202c;
+}
+
 .code-block {
   background-color: #2d3748;
   color: #e2e8f0;
   padding: 16px;
-  border-radius: 6px;
+  border-radius: 0 0 6px 6px;
   overflow-x: auto;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 14px;

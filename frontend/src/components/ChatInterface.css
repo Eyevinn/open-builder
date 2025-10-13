@@ -94,6 +94,16 @@
   border-color: rgba(255, 69, 58, 0.7);
 }
 
+.session-button.download {
+  background: rgba(52, 199, 89, 0.2);
+  border-color: rgba(52, 199, 89, 0.5);
+}
+
+.session-button.download:hover:not(:disabled) {
+  background: rgba(52, 199, 89, 0.3);
+  border-color: rgba(52, 199, 89, 0.7);
+}
+
 .permission-button-header {
   background: rgba(255, 255, 255, 0.2);
   color: white;

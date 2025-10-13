@@ -9,6 +9,7 @@ const path = require('path');
 const cors = require('cors');
 const fs = require('fs-extra');
 const http = require('http');
+const archiver = require('archiver');
 require('dotenv').config();
 
 const WorkspaceManager = require('./src/workspace');
@@ -228,6 +229,156 @@ app.post('/api/permissions/request-mcp', async (req, res) => {
       error: 'Internal server error',
       approved: false,
       reason: 'Server error'
+    });
+  }
+});
+
+// Workspace download endpoint
+app.get('/api/workspace/download/:sessionId?', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const baseWorkspaceDir = workspaceManager.getBaseWorkspaceDir();
+    
+    if (!baseWorkspaceDir) {
+      return res.status(404).json({ error: 'Workspace not initialized' });
+    }
+
+    let workspaceToZip;
+    let filename;
+
+    if (sessionId && sessionId !== 'all') {
+      // Download specific session workspace
+      const sessionWorkspace = workspaceManager.sessionWorkspaces.get(sessionId);
+      if (!sessionWorkspace) {
+        return res.status(404).json({ error: 'Session workspace not found' });
+      }
+      workspaceToZip = sessionWorkspace;
+      filename = `workspace-session-${sessionId}.zip`;
+    } else {
+      // Download entire workspace
+      workspaceToZip = baseWorkspaceDir;
+      filename = 'workspace-complete.zip';
+    }
+
+    // Check if workspace directory exists and has content
+    const workspaceExists = await fs.pathExists(workspaceToZip);
+    if (!workspaceExists) {
+      return res.status(404).json({ error: 'Workspace directory not found' });
+    }
+
+    const files = await fs.readdir(workspaceToZip);
+    if (files.length === 0) {
+      return res.status(404).json({ error: 'Workspace is empty' });
+    }
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Create archive
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // Maximum compression
+    });
+
+    // Handle archive errors
+    archive.on('error', (err) => {
+      console.error('Archive error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to create archive' });
+      }
+    });
+
+    // Pipe archive data to response
+    archive.pipe(res);
+
+    // Add files to archive
+    if (sessionId && sessionId !== 'all') {
+      // For session workspace, add all files with session prefix
+      archive.directory(workspaceToZip, `session-${sessionId}`);
+    } else {
+      // For complete workspace, organize by sessions
+      const items = await fs.readdir(workspaceToZip);
+      for (const item of items) {
+        const itemPath = path.join(workspaceToZip, item);
+        const stat = await fs.stat(itemPath);
+        
+        if (stat.isDirectory() && item.startsWith('session_')) {
+          // This is a session directory
+          archive.directory(itemPath, item);
+        } else if (stat.isFile()) {
+          // This is a base workspace file
+          archive.file(itemPath, { name: item });
+        }
+      }
+    }
+
+    // Finalize the archive
+    await archive.finalize();
+
+  } catch (error) {
+    console.error('Error creating workspace download:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error.message
+      });
+    }
+  }
+});
+
+// Get workspace info endpoint
+app.get('/api/workspace/info/:sessionId?', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const baseWorkspaceDir = workspaceManager.getBaseWorkspaceDir();
+    
+    if (!baseWorkspaceDir) {
+      return res.status(404).json({ error: 'Workspace not initialized' });
+    }
+
+    let workspaceInfo = {
+      hasContent: false,
+      fileCount: 0,
+      files: [],
+      path: '',
+      sessionId: sessionId || 'all'
+    };
+
+    if (sessionId && sessionId !== 'all') {
+      // Get specific session info
+      const sessionWorkspace = workspaceManager.sessionWorkspaces.get(sessionId);
+      if (sessionWorkspace && await fs.pathExists(sessionWorkspace)) {
+        const files = await fs.readdir(sessionWorkspace);
+        workspaceInfo = {
+          hasContent: files.length > 0,
+          fileCount: files.length,
+          files: files.slice(0, 10), // Limit to first 10 files for preview
+          path: sessionWorkspace,
+          sessionId
+        };
+      }
+    } else {
+      // Get complete workspace info
+      const files = await fs.readdir(baseWorkspaceDir);
+      const sessionDirs = files.filter(f => f.startsWith('session_'));
+      workspaceInfo = {
+        hasContent: files.length > 0,
+        fileCount: files.length,
+        files: files.slice(0, 10),
+        path: baseWorkspaceDir,
+        sessionId: 'all',
+        sessionCount: sessionDirs.length,
+        sessions: sessionDirs
+      };
+    }
+
+    res.json(workspaceInfo);
+
+  } catch (error) {
+    console.error('Error getting workspace info:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
     });
   }
 });
