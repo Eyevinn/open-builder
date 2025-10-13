@@ -8,6 +8,12 @@
       "env": {
         "WEB_APP_BASE_URL": "http://localhost:3001"
       }
+    },
+    "deploy-server": {
+      "command": "node",
+      "args": [
+        "/Users/birme/Code/eyevinn/open-builder/mcp-deploy-server.js"
+      ]
     }
   }
 }
