@@ -48,7 +48,7 @@ A web-based interface for Claude Code that provides a user-friendly way to inter
 ### Prerequisites
 
 - Docker and Docker Compose (for containerized deployment)
-- Node.js 18+ and npm (for local development)
+- Node.js 24 and npm (for local development)
 - Anthropic API key ([Get one here](https://console.anthropic.com))
 
 ## Local Development
